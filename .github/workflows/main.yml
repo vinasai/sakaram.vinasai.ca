@@ -20,11 +20,11 @@ jobs:
           # Connect to the server via SSH and run deployment commands
           # We pass the GitHub secrets as environment variables to the remote script
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "SERVER_PATH='${{ secrets.WORK_DIR }}' \
-           REPO_URL='git@github.com:vinasai/sakarama-tours.git' \
-           FRONTEND_DIR='${{ secrets.WORK_DIR }}' \
+          SERVER_PATH='${{ secrets.WORK_DIR }}' \
+          REPO_URL='git@github.com:vinasai/sakarama-tours.git' \
+          FRONTEND_DIR='${{ secrets.WORK_DIR }}' \
            
-           bash -s" << 'EOF'
+           bash -s << 'EOF'
             set -e  # Exit immediately if any command fails
             
             echo "--- Starting Deployment ---"
