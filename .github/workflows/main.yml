@@ -1,0 +1,88 @@
+name: sakaram deploy
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy to Server
+        run: |
+          # Connect to the server via SSH and run deployment commands
+          # We pass the GitHub secrets as environment variables to the remote script
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          "SERVER_PATH='${{ secrets.WORK_DIR }}' \
+           REPO_URL='git@github.com:vinasai/sakarama-tours.git' \
+           FRONTEND_DIR='${{ secrets.WORK_DIR }}' \
+           
+           bash -s" << 'EOF'
+            set -e  # Exit immediately if any command fails
+            
+            echo "--- Starting Deployment ---"
+            # Ensure the remote SSH known_hosts is set up for github.com
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            
+            # Perform a fresh clone of the repository to a temporary directory
+            TEMP_CLONE_DIR="/tmp/sakaram-$(date +%s)"
+            echo "Cloning repository into $TEMP_CLONE_DIR..."
+            git clone "$REPO_URL" "$TEMP_CLONE_DIR"
+            
+            # Replace the old application code with the new version
+            echo "Updating application code in $SERVER_PATH..."
+            rm -rf "$SERVER_PATH"
+            mkdir -p "$SERVER_PATH"
+            mv "$TEMP_CLONE_DIR"/* "$SERVER_PATH/"
+            rm -rf "$TEMP_CLONE_DIR"
+            
+            # --- Deploy the frontend (Next.js) ---
+            echo "Deploying frontend..."
+            cd "$FRONTEND_DIR"
+            # Use --production=false to ensure devDependencies (like vite) are installed for the build
+            yarn install --production=false
+                        
+            # Run the build with environment variables
+            echo "Building the application..."
+            yarn run build
+
+            if [ -d "build" ]; then
+              BUILD_FOLDER="build"
+            elif [ -d "dist" ]; then
+              BUILD_FOLDER="dist"
+            elif [ -d ".next" ]; then # Next.js typically uses .next
+              BUILD_FOLDER=".next"
+            else
+              echo "No build output folder found for frontend! Exiting..."
+              exit 1
+            fi
+            echo "Found frontend build folder: $BUILD_FOLDER"
+            
+            if [ -z "$BUILD_FOLDER" ]; then
+              echo "BUILD_FOLDER variable is empty! Exiting..."
+              exit 1
+            fi
+            
+            echo "Found build folder: $BUILD_FOLDER"
+            
+            # Remove all content in SERVER_PATH except the build folder
+            find . -mindepth 1 -maxdepth 1 ! -name "$BUILD_FOLDER" ! -name "api" -exec rm -rf {} +
+            
+            # Move the contents of the build folder into the SERVER_PATH
+            mv "$BUILD_FOLDER"/* .
+            rm -rf "$BUILD_FOLDER"
+                     
+            
+            # Restart Nginx to apply any configuration or content changes
+            echo "Restarting Nginx..."
+            sudo systemctl restart nginx
+            echo "--- Deployment Finished Successfully ---"
+          EOF
