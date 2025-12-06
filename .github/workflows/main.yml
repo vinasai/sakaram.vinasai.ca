@@ -16,62 +16,59 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       - name: Deploy to Server
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}' bash -s" << 'EOF'
-            set -e
-            
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}' bash -s" << 'EOF'
+            set -e
+
             # Define REPO_URL inside the remote script
             REPO_URL='git@github.com:vinasai/sakarama-tours.git'
 
-            echo "--- Starting Deployment ---"
-            # Ensure the remote SSH known_hosts is set up for github.com
-            mkdir -p ~/.ssh
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-            
-            # Perform a fresh clone
-            TEMP_CLONE_DIR="/tmp/sakaram-$(date +%s)"
-            echo "Cloning repository into $TEMP_CLONE_DIR..."
+            echo "--- Starting Deployment ---"
+            # Ensure the remote SSH known_hosts is set up for github.com
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
             
-            # NOW this variable will actually exist
-            git clone "$REPO_URL" "$TEMP_CLONE_DIR"
-            
-            # Replace the old application code
-            echo "Updating application code in $SERVER_PATH..."
-            rm -rf "$SERVER_PATH"
-            mkdir -p "$SERVER_PATH"
-            mv "$TEMP_CLONE_DIR"/* "$SERVER_PATH/"
-            rm -rf "$TEMP_CLONE_DIR"
-            
-            # --- Deploy the frontend (Next.js) ---
-            echo "Deploying frontend..."
-            cd "$FRONTEND_DIR"
+            # Perform a fresh clone
+            TEMP_CLONE_DIR="/tmp/sakaram-$(date +%s)"
+            echo "Cloning repository into $TEMP_CLONE_DIR..."
             
-            yarn install --production=false
-            echo "Building the application..."
-            yarn run build
+            git clone "$REPO_URL" "$TEMP_CLONE_DIR"
+            
+            # Replace the old application code
+            echo "Updating application code in $SERVER_PATH..."
+            rm -rf "$SERVER_PATH"
+            mkdir -p "$SERVER_PATH"
+            mv "$TEMP_CLONE_DIR"/* "$SERVER_PATH/"
+            rm -rf "$TEMP_CLONE_DIR"
+            
+            # --- Deploy the frontend (Next.js) ---
+            echo "Deploying frontend..."
+            cd "$FRONTEND_DIR"
+            
+            yarn install --production=false
+            echo "Building the application..."
+            yarn run build
 
-            if [ -d "build" ]; then
-              BUILD_FOLDER="build"
-            elif [ -d "dist" ]; then
-              BUILD_FOLDER="dist"
-            elif [ -d ".next" ]; then
-              BUILD_FOLDER=".next"
-            else
-              echo "No build output folder found for frontend! Exiting..."
-              exit 1
-            fi
-            echo "Found frontend build folder: $BUILD_FOLDER"
-            
-            # Clean up folder logic...
-            # Note: be careful here. You are currently in FRONTEND_DIR. 
-            # Make sure you don't delete the build folder you just created.
-            find . -mindepth 1 -maxdepth 1 ! -name "$BUILD_FOLDER" ! -name "api" -exec rm -rf {} +
-            
-            mv "$BUILD_FOLDER"/* .
-            rm -rf "$BUILD_FOLDER"
-                     
-            echo "Restarting Nginx..."
-            sudo systemctl restart nginx
-            echo "--- Deployment Finished Successfully ---"
-          EOF
+            if [ -d "build" ]; then
+              BUILD_FOLDER="build"
+            elif [ -d "dist" ]; then
+              BUILD_FOLDER="dist"
+            elif [ -d ".next" ]; then
+              BUILD_FOLDER=".next"
+            else
+              echo "No build output folder found for frontend! Exiting..."
+              exit 1
+            fi
+            echo "Found frontend build folder: $BUILD_FOLDER"
+            
+            # Clean up folder logic
+            find . -mindepth 1 -maxdepth 1 ! -name "$BUILD_FOLDER" ! -name "api" -exec rm -rf {} +
+            
+            mv "$BUILD_FOLDER"/* .
+            rm -rf "$BUILD_FOLDER"
+                      
+            echo "Restarting Nginx..."
+            sudo systemctl restart nginx
+            echo "--- Deployment Finished Successfully ---"
+          EOF
