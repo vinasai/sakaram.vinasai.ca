@@ -1,4 +1,5 @@
 import { Facebook, Instagram, Twitter, Mail, Phone, ArrowRight } from 'lucide-react';
+import sakaramLogo from '../pics/sarkam.png';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -34,7 +35,7 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
               <img 
-                src="/src/pics/sarkam.png" 
+                src={sakaramLogo} 
                 alt="Sarkam Tours Logo" 
                 className="h-14 w-auto"
               />

@@ -1,5 +1,6 @@
 import { Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import sakaramLogo from '../pics/sarkam.png';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -97,7 +98,7 @@ export default function Header() {
           {/* Logo */}
           <div className="flex items-center cursor-pointer" onClick={() => scrollToSection('home')}>
             <img 
-              src="/src/pics/sarkam.png" 
+              src={sakaramLogo} 
               alt="Sarkam Tours Logo" 
               className="h-16 w-auto"
             />
