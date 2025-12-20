@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { login, setAuthToken } from '../api/client';
 
 const LockIcon = () => (
   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,28 +31,25 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simulate loading delay
-    setTimeout(() => {
-      // simple demo credentials - change as needed
-      if (username === 'admin' && password === 'admin') {
-        localStorage.setItem('admin_logged_in', '1');
-        window.location.pathname = '/admin';
-      } else {
-        setError('Invalid credentials. Please try again.');
-        setIsLoading(false);
-      }
-    }, 500);
+    try {
+      const res = await login(username, password);
+      setAuthToken(res.token);
+      window.location.pathname = '/admin';
+    } catch (err) {
+      setError('Invalid credentials. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Icon Section */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl mb-4 text-white">
             <LockIcon />
@@ -60,11 +58,9 @@ export default function AdminLogin() {
           <p className="text-gray-600">Sign in to manage your website</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Username Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Username
@@ -84,7 +80,6 @@ export default function AdminLogin() {
                 </div>
               </div>
 
-              {/* Password Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
@@ -104,7 +99,6 @@ export default function AdminLogin() {
                 </div>
               </div>
 
-              {/* Error Message */}
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                   <AlertIcon />
@@ -112,7 +106,6 @@ export default function AdminLogin() {
                 </div>
               )}
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -122,25 +115,8 @@ export default function AdminLogin() {
               </button>
             </form>
           </div>
-
-          {/* Demo Credentials Footer */}
-          <div className="px-8 py-4 bg-gray-50 border-t border-gray-200">
-            <p className="text-xs text-gray-600 text-center">
-              Demo credentials:{' '}
-              <span className="inline-flex items-center gap-1">
-                <code className="bg-white px-2 py-0.5 rounded border border-gray-200 font-mono text-gray-900">
-                  admin
-                </code>
-                <span className="text-gray-400">/</span>
-                <code className="bg-white px-2 py-0.5 rounded border border-gray-200 font-mono text-gray-900">
-                  admin
-                </code>
-              </span>
-            </p>
-          </div>
         </div>
 
-        {/* Additional Info */}
         <p className="text-center text-xs text-gray-500 mt-6">
           Protected area. Authorized access only.
         </p>

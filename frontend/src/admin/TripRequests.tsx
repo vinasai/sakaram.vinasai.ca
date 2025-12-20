@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { fetchTripRequests, fetchTours, updateTripRequest } from '../api/client';
 
 type TripRequest = {
-  id: number;
-  tourId: number;
-  tourName: string;
+  id: string;
+  tourId: string;
+  tourName?: string;
   startDate: string;
   travellers: number;
   accommodation: string;
@@ -13,12 +14,6 @@ type TripRequest = {
   createdAt: string;
   status?: string;
 };
-
-const TrashIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
 
 const RefreshIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,14 +72,26 @@ const ClockIcon = () => (
 export default function TripRequests() {
   const [items, setItems] = useState<TripRequest[]>([]);
 
-  const load = () => {
+  const load = async () => {
     try {
-      const raw = localStorage.getItem('trip_requests');
-      console.debug('TripRequests: read raw trip_requests from localStorage:', raw ? `${raw.length} chars` : 'null');
-      const parsed = raw ? JSON.parse(raw) : [];
-      setItems(Array.isArray(parsed) ? parsed : []);
+      const [res, tours] = await Promise.all([fetchTripRequests(), fetchTours()]);
+      const tourMap = new Map((tours.items || []).map((tour: any) => [tour._id, tour.name]));
+      const mapped = (res.items || []).map((item: any) => ({
+        id: item._id,
+        tourId: item.tourId,
+        tourName: tourMap.get(item.tourId),
+        startDate: new Date(item.startDate).toLocaleDateString(),
+        travellers: item.travellers,
+        accommodation: item.accommodationType,
+        name: item.fullName,
+        phone: item.phone || '- ',
+        email: item.email,
+        createdAt: item.createdAt,
+        status: item.status,
+      }));
+      setItems(mapped);
     } catch (e) {
-      console.warn('TripRequests: failed to parse trip_requests', e);
+      console.warn('TripRequests: failed to load', e);
       setItems([]);
     }
   };
@@ -93,28 +100,13 @@ export default function TripRequests() {
     load();
   }, []);
 
-  const remove = (id: number) => {
-    if (!confirm('Delete this trip request?')) return;
-    const next = items.filter(i => i.id !== id);
-    setItems(next);
+  const updateStatus = async (id: string, newStatus: string) => {
     try {
-      localStorage.setItem('trip_requests', JSON.stringify(next));
-      console.debug('TripRequests: wrote trip_requests, count=', next.length);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'trip_requests' } })); } catch (e) {}
-    } catch (e) {
-      console.error('TripRequests: failed to write trip_requests', e);
-    }
-  };
-
-  const updateStatus = (id: number, newStatus: string) => {
-    const next = items.map(i => i.id === id ? { ...i, status: newStatus } : i);
-    setItems(next);
-    try {
-      localStorage.setItem('trip_requests', JSON.stringify(next));
-      console.debug('TripRequests: updated status for', id, 'to', newStatus);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'trip_requests' } })); } catch (e) {}
+      await updateTripRequest(id, { status: newStatus });
+      setItems((prev) => prev.map(i => i.id === id ? { ...i, status: newStatus } : i));
     } catch (e) {
       console.error('TripRequests: failed to update status', e);
+      alert('Unable to update status.');
     }
   };
 
@@ -128,21 +120,8 @@ export default function TripRequests() {
     }
   };
 
-  const clearAll = () => {
-    if (!confirm('Clear all trip requests?')) return;
-    setItems([]);
-    try {
-      localStorage.removeItem('trip_requests');
-      console.debug('TripRequests: removed trip_requests from localStorage');
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'trip_requests' } })); } catch (e) {}
-    } catch (e) {
-      console.error('TripRequests: failed to remove trip_requests', e);
-    }
-  };
-
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-gray-800">Trip Requests</h2>
@@ -156,19 +135,9 @@ export default function TripRequests() {
             <RefreshIcon />
             <span className="font-medium">Refresh</span>
           </button>
-          {items.length > 0 && (
-            <button
-              onClick={clearAll}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <TrashIcon />
-              <span className="font-medium">Clear All</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Empty State */}
       {items.length === 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <div className="flex justify-center mb-4 text-gray-400">
@@ -179,12 +148,10 @@ export default function TripRequests() {
         </div>
       )}
 
-      {/* Trip Requests List */}
       <div className="space-y-4">
         {items.map(i => (
           <div key={i.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             <div className="p-6">
-              {/* Header with tour name and timestamp */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -196,7 +163,7 @@ export default function TripRequests() {
                       {i.status || 'New'}
                     </span>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{i.tourName}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{i.tourName || i.tourId}</h3>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-1.5">
                       <CalendarIcon />
@@ -212,98 +179,51 @@ export default function TripRequests() {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => remove(i.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                  title="Delete request"
-                >
-                  <TrashIcon />
-                </button>
               </div>
 
-              {/* Customer Information */}
-              <div className="border-t border-gray-100 pt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Customer Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="text-gray-400">
-                      <UserIcon />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Name</p>
-                      <p className="text-gray-900 font-medium">{i.name}</p>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="text-gray-400">
+                    <UserIcon />
                   </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="text-gray-400">
-                      <EmailIcon />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Email</p>
-                      <a href={`mailto:${i.email}`} className="text-gray-900 hover:text-blue-600 font-medium">
-                        {i.email}
-                      </a>
-                    </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Name</p>
+                    <p className="text-gray-900">{i.name}</p>
                   </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="text-gray-400">
-                      <PhoneIcon />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-0.5">Phone</p>
-                      <a href={`tel:${i.phone}`} className="text-gray-900 hover:text-blue-600 font-medium">
-                        {i.phone}
-                      </a>
-                    </div>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="text-gray-400">
+                    <EmailIcon />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                    <a href={`mailto:${i.email}`} className="text-gray-900 hover:text-blue-600">
+                      {i.email}
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="text-gray-400">
+                    <PhoneIcon />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+                    <a href={`tel:${i.phone}`} className="text-gray-900 hover:text-blue-600">
+                      {i.phone}</a>
                   </div>
                 </div>
               </div>
 
-              {/* Actions Section */}
-              <div className="border-t border-gray-100 pt-4 mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Actions</h4>
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+                {['Pending', 'Confirmed', 'Cancelled', 'Completed'].map((status) => (
                   <button
-                    onClick={() => updateStatus(i.id, 'Pending')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      i.status === 'Pending'
-                        ? 'bg-yellow-600 text-white'
-                        : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
-                    }`}
+                    key={status}
+                    onClick={() => updateStatus(i.id, status)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-full border ${getStatusColor(status)} ${i.status === status ? 'ring-2 ring-offset-2 ring-emerald-400' : ''}`}
                   >
-                    Mark as Pending
+                    {status}
                   </button>
-                  <button
-                    onClick={() => updateStatus(i.id, 'Confirmed')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      i.status === 'Confirmed'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
-                    }`}
-                  >
-                    Confirm Booking
-                  </button>
-                  <button
-                    onClick={() => updateStatus(i.id, 'Completed')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      i.status === 'Completed'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-                    }`}
-                  >
-                    Mark as Completed
-                  </button>
-                  <button
-                    onClick={() => updateStatus(i.id, 'Cancelled')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      i.status === 'Cancelled'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                    }`}
-                  >
-                    Cancel Request
-                  </button>
-                </div>
+                ))}
               </div>
             </div>
           </div>

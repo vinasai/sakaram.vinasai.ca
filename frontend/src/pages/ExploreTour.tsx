@@ -1,21 +1,6 @@
 import { useEffect, useState } from 'react';
 import Header from '../components/Header';
-
-const defaultTours = [
-  {
-    id: 1,
-    name: 'Sigiriya Rock Fortress',
-    location: 'Sigiriya',
-    price: '$150',
-    image: 'https://images.pexels.com/photos/11330271/pexels-photo-11330271.jpeg?auto=compress&cs=tinysrgb&w=800',
-    description: 'Ancient rock fortress with stunning frescoes',
-    duration: '4-5 hours',
-    rating: 4.9,
-    popular: true,
-    reviews: 245
-  },
-  // (other defaults omitted for brevity - Tours.tsx provides admin content fallback)
-];
+import { createTripRequest, fetchTourDetails, toMediaUrl } from '../api/client';
 
 export default function ExploreTour() {
   const [tour, setTour] = useState<any | null>(null);
@@ -23,26 +8,49 @@ export default function ExploreTour() {
   const [form, setForm] = useState({ startDate: '', travellers: 1, accommodation: 'Standard', name: '', phone: '', countryCode: '+94', email: '' });
 
   useEffect(() => {
-    try {
-      const path = window.location.pathname || '';
-      const id = Number(path.replace('/trip/', '').split('/')[0]);
-      const raw = localStorage.getItem('tours');
-      let found = null;
-      if (raw) {
-        try {
-          const stored = JSON.parse(raw);
-          if (Array.isArray(stored)) found = stored.find((t: any) => Number(t.id) === id);
-        } catch (e) {
-          // ignore parse
+    let mounted = true;
+    const loadTour = async () => {
+      try {
+        const path = window.location.pathname || '';
+        const id = path.replace('/trip/', '').split('/')[0];
+        if (!id) return;
+
+        const detail = await fetchTourDetails(id);
+        const photos = detail.images?.map((img: any) => toMediaUrl(img.imageUrl)).filter(Boolean) || [];
+        const included = detail.inclusions?.map((item: any) => item.description) || [];
+        const excluded = detail.exclusions?.map((item: any) => item.description) || [];
+        const plan = detail.itinerary
+          ?.sort((a: any, b: any) => a.dayNumber - b.dayNumber)
+          .map((item: any) => item.activity) || [];
+
+        if (mounted) {
+          setTour({
+            id: detail.tour._id,
+            name: detail.tour.name,
+            location: detail.tour.location,
+            price: detail.tour.price,
+            image: photos[0],
+            photos,
+            description: detail.tour.description,
+            duration: detail.tour.duration,
+            rating: detail.tour.rating,
+            reviews: detail.tour.reviewsCount,
+            included,
+            excluded,
+            plan,
+          });
         }
+      } catch (e) {
+        console.error('Failed to load tour', e);
+        if (mounted) setTour(null);
       }
-      if (!found) {
-        found = defaultTours.find(t => Number(t.id) === id) || null;
-      }
-      setTour(found);
-    } catch (e) {
-      setTour(null);
-    }
+    };
+
+    loadTour();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   if (!tour) {
@@ -184,7 +192,9 @@ export default function ExploreTour() {
             <section className="bg-white p-6 rounded-xl shadow-lg border-2 border-emerald-100 sticky top-6">
               <div className="text-center mb-6">
                 <div className="text-sm text-gray-500 mb-1">From</div>
-                <div className="text-4xl font-bold text-emerald-600">{tour.price || 'Contact for price'}</div>
+                <div className="text-4xl font-bold text-emerald-600">
+                  {typeof tour.price === 'number' ? `$${tour.price}` : (tour.price || 'Contact for price')}
+                </div>
                 <div className="text-sm text-gray-500 mt-1">per person</div>
               </div>
               <button onClick={() => setShowBooking(true)} className="w-full px-6 py-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-bold text-lg shadow-lg mb-4">Book This Tour</button>
@@ -239,30 +249,22 @@ export default function ExploreTour() {
 
 // Booking modal and logic
 function BookingModal({ tour, form, setForm, onClose }: any) {
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const raw = localStorage.getItem('trip_requests');
-      const existing = raw ? JSON.parse(raw) : [];
-      const record = {
-        id: Date.now(),
+      await createTripRequest({
         tourId: tour.id,
-        tourName: tour.name,
         startDate: form.startDate,
         travellers: Number(form.travellers) || 1,
-        accommodation: form.accommodation,
-        name: form.name,
-        phone: form.phone,
+        accommodationType: form.accommodation,
+        fullName: form.name,
+        phone: `${form.countryCode} ${form.phone}`.trim(),
         email: form.email,
-        createdAt: new Date().toISOString()
-      };
-      const next = [record, ...(Array.isArray(existing) ? existing : [])];
-      localStorage.setItem('trip_requests', JSON.stringify(next));
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'trip_requests' } })); } catch (e) {}
+      });
       alert('Request submitted — admin will contact you.');
       onClose();
     } catch (err) {
-      console.error('Booking: failed to save request', err);
+      console.error('Booking: failed to submit request', err);
       alert('Failed to submit request. See console for details.');
     }
   };

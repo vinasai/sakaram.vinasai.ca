@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { createDeal, deleteDeal, fetchDeals, toMediaUrl, updateDeal } from '../api/client';
 
-type Deal = { id: number; title: string; description?: string; price?: string; image?: string };
+type Deal = { id: string; title: string; description?: string; price?: string; imageUrl?: string };
+
+type FormState = { title: string; description: string; price: string; imageFile: File | null; imagePreview: string };
 
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,106 +45,120 @@ export default function DealsManager() {
   const [items, setItems] = useState<Deal[]>([]);
   const [editing, setEditing] = useState<Deal | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', price: '', image: '' });
+  const [form, setForm] = useState<FormState>({ title: '', description: '', price: '', imageFile: null, imagePreview: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((prev) => ({ ...prev, image: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
+    const preview = URL.createObjectURL(file);
+    setForm((prev) => ({ ...prev, imageFile: file, imagePreview: preview }));
+  };
+
+  const loadDeals = async () => {
+    try {
+      const res = await fetchDeals();
+      const mapped = (res.items || []).map((deal: any) => ({
+        id: deal._id,
+        title: deal.title,
+        description: deal.description,
+        price: deal.price ? String(deal.price) : '',
+        imageUrl: deal.imageUrl,
+      }));
+      setItems(mapped);
+    } catch (err) {
+      console.error('Failed to load deals', err);
+      setItems([]);
+    }
   };
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('deals');
-      console.debug('DealsManager: read raw deals from localStorage:', raw ? `${raw.length} chars` : 'null');
-      if (!raw) {
-        setItems([]);
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setItems(parsed);
-      else setItems([]);
-    } catch (e) {
-      console.warn('DealsManager: failed to read/parse localStorage deals:', e);
-      setItems([]);
-    }
+    loadDeals();
   }, []);
-
-  useEffect(() => { 
-    try {
-      // Prevent accidental overwrite of existing non-empty stored data with an empty array
-      if (items.length === 0) {
-        const existingRaw = localStorage.getItem('deals');
-        try {
-          const existing = existingRaw ? JSON.parse(existingRaw) : null;
-          if (Array.isArray(existing) && existing.length > 0) {
-            console.warn('DealsManager: skipping write of empty deals array to avoid overwriting existing data');
-            return;
-          }
-        } catch (e) {
-          // if parsing existing fails, proceed to write
-        }
-      }
-
-      const payload = JSON.stringify(items);
-      localStorage.setItem('deals', payload);
-      console.debug('DealsManager: wrote deals to localStorage, count=', items.length, 'chars=', payload.length);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'deals' } })); } catch (e) {}
-    } catch (e) {
-      console.error('DealsManager: failed to write deals to localStorage', e);
-    }
-  }, [items]);
-
-  // small debug: expose a visible count so it's easier to confirm persistence after reload
-  const savedCount = items.length;
 
   const openAddModal = () => {
     setEditing(null);
-    setForm({ title: '', description: '', price: '', image: '' });
+    setForm({ title: '', description: '', price: '', imageFile: null, imagePreview: '' });
     setShowModal(true);
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newItem: Deal = { id: Date.now(), title: form.title, description: form.description, price: form.price, image: form.image };
-    setItems((s) => [newItem, ...s]);
-    setForm({ title: '', description: '', price: '', image: '' });
-    setShowModal(false);
+    if (!form.imageFile) {
+      alert('Please select an image.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await createDeal({
+        title: form.title,
+        description: form.description,
+        price: form.price ? Number(form.price) : undefined,
+      }, form.imageFile);
+      await loadDeals();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Failed to create deal', err);
+      alert('Unable to create deal.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const startEdit = (d: Deal) => {
     setEditing(d);
-    setForm({ title: d.title, description: d.description || '', price: d.price || '', image: d.image || '' });
+    setForm({
+      title: d.title,
+      description: d.description || '',
+      price: d.price || '',
+      imageFile: null,
+      imagePreview: d.imageUrl ? toMediaUrl(d.imageUrl) : '',
+    });
     setShowModal(true);
   };
 
-  const saveEdit = (e: React.FormEvent) => {
+  const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
-    setItems((s) => s.map(i => i.id === editing.id ? { ...i, title: form.title, description: form.description, price: form.price, image: form.image } : i));
-    setEditing(null);
-    setForm({ title: '', description: '', price: '', image: '' });
-    setShowModal(false);
+    setIsSaving(true);
+    try {
+      await updateDeal(editing.id, {
+        title: form.title,
+        description: form.description,
+        price: form.price ? Number(form.price) : undefined,
+      }, form.imageFile);
+      await loadDeals();
+      setEditing(null);
+      setShowModal(false);
+    } catch (err) {
+      console.error('Failed to update deal', err);
+      alert('Unable to update deal.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditing(null);
-    setForm({ title: '', description: '', price: '', image: '' });
+    setForm({ title: '', description: '', price: '', imageFile: null, imagePreview: '' });
   };
 
-  const remove = (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Delete this deal?')) return;
-    setItems((s) => s.filter(i => i.id !== id));
+    try {
+      await deleteDeal(id);
+      setItems((s) => s.filter(i => i.id !== id));
+    } catch (err) {
+      console.error('Failed to delete deal', err);
+      alert('Unable to delete deal.');
+    }
   };
+
+  const savedCount = items.length;
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
             <h2 className="text-2xl font-semibold text-gray-800">
@@ -158,7 +175,6 @@ export default function DealsManager() {
         </button>
       </div>
 
-      {/* Deals Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.length === 0 && (
           <div className="col-span-full bg-white rounded-lg border border-gray-200 p-12 text-center">
@@ -178,8 +194,8 @@ export default function DealsManager() {
         {items.map(i => (
           <div key={i.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             <div className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
-              {i.image ? (
-                <img src={i.image} alt="deal" className="w-full h-full object-cover" />
+              {i.imageUrl ? (
+                <img src={toMediaUrl(i.imageUrl)} alt="deal" className="w-full h-full object-cover" />
               ) : (
                 <div className="text-gray-400">
                   <ImageIcon />
@@ -217,11 +233,9 @@ export default function DealsManager() {
         ))}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header - Enhanced */}
             <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">
@@ -239,7 +253,6 @@ export default function DealsManager() {
               </button>
             </div>
 
-            {/* Modal Body - Scrollable */}
             <div className="overflow-y-auto flex-1">
               <form onSubmit={editing ? saveEdit : handleAdd} className="p-8 space-y-6">
                 <div>
@@ -249,9 +262,9 @@ export default function DealsManager() {
                   <input
                     value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                    placeholder="e.g., Summer Special - 50% Off"
                     required
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="e.g., Summer Beach Getaway"
                   />
                 </div>
 
@@ -262,113 +275,54 @@ export default function DealsManager() {
                   <textarea
                     value={form.description}
                     onChange={e => setForm({ ...form, description: e.target.value })}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all resize-none"
-                    placeholder="Describe your amazing deal..."
-                    rows={4}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="Describe the deal"
+                    rows={3}
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Price
+                  </label>
+                  <input
+                    value={form.price}
+                    onChange={e => setForm({ ...form, price: e.target.value })}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    placeholder="e.g., 299"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Price / Discount
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-600 font-semibold">
-                      💰
-                    </div>
-                    <input
-                      value={form.price}
-                      onChange={e => setForm({ ...form, price: e.target.value })}
-                      className="w-full border-2 border-gray-200 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                      placeholder="e.g., $99 or 20% OFF"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="block text-sm font-semibold text-gray-700">
                     Deal Image
                   </label>
-                  
-                  <div className="flex gap-2">
-                    <input
-                      value={form.image}
-                      onChange={e => setForm({ ...form, image: e.target.value })}
-                      className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                      placeholder="https://example.com/deal-image.jpg"
-                    />
-                    {form.image && form.image.startsWith('http') && (
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, image: '' })}
-                        className="px-4 py-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors font-semibold text-sm"
-                        title="Clear URL"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  
-                  <label className="flex items-center justify-center gap-3 w-full border-3 border-dashed border-gray-300 rounded-xl px-6 py-5 cursor-pointer hover:border-amber-400 hover:bg-amber-50 transition-all group">
-                    <svg className="w-5 h-5 text-amber-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <div className="text-center">
-                      <span className="text-sm font-semibold text-gray-700 group-hover:text-amber-600 transition-colors">
-                        Upload from Device
-                      </span>
-                      <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WEBP up to 10MB</p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFile}
-                      className="hidden"
-                    />
-                  </label>
-                  
-                  {form.image && (
-                    <div className="mt-4 w-full h-48 overflow-hidden rounded-xl border-2 border-gray-200 shadow-sm relative group">
-                      <img 
-                        src={form.image} 
-                        alt="preview" 
-                        className="w-full h-full object-cover" 
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent && !parent.querySelector('.error-msg')) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'error-msg flex items-center justify-center h-full bg-red-50 text-red-600 text-sm';
-                            errorDiv.textContent = 'Failed to load image. Check URL.';
-                            parent.appendChild(errorDiv);
-                          }
-                        }}
-                      />
-                      <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                        Preview
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                    {form.imagePreview ? (
+                      <img src={form.imagePreview} alt="preview" className="w-full h-48 object-cover rounded-lg mb-4" />
+                    ) : (
+                      <div className="text-gray-400 flex flex-col items-center">
+                        <ImageIcon />
+                        <p className="text-sm mt-2">Upload an image</p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    <input type="file" accept="image/*" onChange={handleFile} className="mt-4" />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <button type="button" onClick={closeModal} className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-6 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-70"
+                  >
+                    {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Deal'}
+                  </button>
                 </div>
               </form>
-            </div>
-
-            {/* Modal Footer - Fixed */}
-            <div className="flex gap-4 px-8 py-6 border-t border-gray-200 bg-gray-50">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-semibold shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={editing ? saveEdit : handleAdd}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl hover:from-amber-700 hover:to-orange-700 transition-all font-semibold shadow-lg hover:shadow-xl"
-              >
-                {editing ? ' Save Changes' : ' Create Deal'}
-              </button>
             </div>
           </div>
         </div>

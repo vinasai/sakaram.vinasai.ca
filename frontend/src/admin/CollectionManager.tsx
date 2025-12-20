@@ -1,6 +1,29 @@
 import { useEffect, useState } from 'react';
+import {
+  addTourExclusion,
+  addTourInclusion,
+  addTourItinerary,
+  createTour,
+  deleteTour,
+  deleteTourExclusion,
+  deleteTourImage,
+  deleteTourInclusion,
+  deleteTourItinerary,
+  fetchTourDetails,
+  fetchTours,
+  toMediaUrl,
+  updateTour,
+  uploadTourImage,
+} from '../api/client';
 
-type Tour = { id: number; name: string; location?: string; price?: string; description?: string; image?: string; duration?: string; rating?: number; popular?: boolean; reviews?: number; photos?: string[]; included?: string[]; excluded?: string[]; plan?: Array<string | string[] | {day: string; activities: string[]}> };
+type Tour = { id: string; name: string; location?: string; price?: string; description?: string; image?: string; duration?: string; rating?: number; popular?: boolean; reviews?: number; photos?: string[]; included?: string[]; excluded?: string[]; plan?: Array<string | string[] | {day: string; activities: string[]}> };
+
+type TourDetails = {
+  inclusionIds: string[];
+  exclusionIds: string[];
+  itineraryIds: string[];
+  imageIds: string[];
+};
 
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,6 +125,7 @@ const CalendarIcon = () => (
 export default function CollectionManager() {
   const [items, setItems] = useState<Tour[]>([]);
   const [editing, setEditing] = useState<Tour | null>(null);
+  const [editingDetails, setEditingDetails] = useState<TourDetails | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false as boolean, reviews: '', photos: '', included: '', excluded: '', plan: '' });
   const [formError, setFormError] = useState('');
@@ -194,43 +218,31 @@ export default function CollectionManager() {
     e.target.value = '';
   };
 
-  useEffect(() => {
+  const loadTours = async () => {
     try {
-      const raw = localStorage.getItem('tours');
-      console.debug('CollectionManager: read raw tours from localStorage:', raw ? `${raw.length} chars` : 'null');
-      if (!raw) { setItems([]); return; }
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setItems(parsed);
-      else setItems([]);
-    } catch (e) {
-      console.warn('CollectionManager: failed to read/parse tours from localStorage', e);
+      const res = await fetchTours();
+      const mapped = (res.items || []).map((tour: any) => ({
+        id: tour._id,
+        name: tour.name,
+        location: tour.location,
+        price: tour.price ? `$${tour.price}` : '',
+        description: tour.description,
+        image: tour.imageUrl ? toMediaUrl(tour.imageUrl) : '',
+        duration: tour.duration ? String(tour.duration) : '',
+        rating: tour.rating,
+        popular: tour.isHotDeal,
+        reviews: tour.reviewsCount,
+      }));
+      setItems(mapped);
+    } catch (err) {
+      console.error('CollectionManager: failed to load tours', err);
       setItems([]);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    try {
-      if (items.length === 0) {
-        const existingRaw = localStorage.getItem('tours');
-        try {
-          const existing = existingRaw ? JSON.parse(existingRaw) : null;
-          if (Array.isArray(existing) && existing.length > 0) {
-            console.warn('CollectionManager: skipping write of empty tours to avoid overwriting existing data');
-            return;
-          }
-        } catch (e) {
-          // proceed to write if parse fails
-        }
-      }
-
-      const payload = JSON.stringify(items);
-      localStorage.setItem('tours', payload);
-      console.debug('CollectionManager: wrote tours to localStorage, count=', items.length, 'chars=', payload.length);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'tours' } })); } catch (e) {}
-    } catch (e) {
-      console.error('CollectionManager: failed to write tours to localStorage', e);
-    }
-  }, [items]);
+    loadTours();
+  }, []);
 
 
 
@@ -383,6 +395,7 @@ export default function CollectionManager() {
 
   const openAddModal = () => {
     setEditing(null);
+    setEditingDetails(null);
     setForm({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false, reviews: '', photos: '', included: '', excluded: '', plan: '' });
     setFormError('');
     setUrlInput('');
@@ -397,150 +410,225 @@ export default function CollectionManager() {
     setShowModal(true);
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const photosArrForValidation = form.photos ? form.photos.split(',').filter(p => p && p.trim()) : [];
-    if (photosArrForValidation.length === 0 && !form.image) {
+    const mainImage = form.image || photosArrForValidation[0] || '';
+    if (!mainImage) {
       setFormError('Please provide at least one photo by uploading or entering an image URL.');
       return;
     }
 
-    const finalPrice = form.price ? `$${form.price}` : '';
+    try {
+      const created = await createTour({
+        name: form.name,
+        location: form.location,
+        price: Number(form.price) || 0,
+        duration: Number.parseInt(form.duration, 10) || 1,
+        rating: form.rating ? parseFloat(form.rating) : 0,
+        reviewsCount: form.reviews ? Number(form.reviews) : 0,
+        isHotDeal: !!form.popular,
+        description: form.description,
+        imageUrl: mainImage,
+      });
 
-    const newItem: Tour = {
-      id: Date.now(),
-      name: form.name,
-      location: form.location,
-      price: finalPrice,
-      description: form.description,
-      image: form.image,
-      duration: form.duration,
-      rating: form.rating ? parseFloat(form.rating) : undefined,
-      popular: !!form.popular,
-      reviews: form.reviews ? Number(form.reviews) : undefined,
-      photos: (() => {
-        const arr = form.photos ? form.photos.split(',').filter(p => p && p.trim()) : [];
-        if (arr.length === 0 && form.image) return [String(form.image)];
-        return arr.length ? arr : undefined;
-      })(),
-      included: includedItems.length > 0 ? includedItems : undefined,
-      excluded: excludedItems.length > 0 ? excludedItems : undefined,
-      plan: planItems.length > 0 ? planItems : undefined
-    };
-    setItems((s) => [newItem, ...s]);
-    setForm({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false, reviews: '', photos: '', included: '', excluded: '', plan: '' });
-    setFormError('');
-    setUrlInput('');
-    setIncludedItems([]);
-    setExcludedItems([]);
-    setPlanItems([]);
-    setExpandedDays(new Set());
-    setShowModal(false);
+      const tourId = created._id;
+
+      const imageUrls = [mainImage, ...photosArrForValidation.filter((p) => p !== mainImage)];
+      for (const url of imageUrls) {
+        await uploadTourImage(tourId, null, url);
+      }
+
+      for (const item of includedItems) {
+        await addTourInclusion(tourId, item);
+      }
+      for (const item of excludedItems) {
+        await addTourExclusion(tourId, item);
+      }
+      if (planItems.length > 0) {
+        for (let index = 0; index < planItems.length; index += 1) {
+          const day = planItems[index];
+          const dayNumber = Number(day.day.match(/(\d+)/)?.[1]) || index + 1;
+          for (const activity of day.activities) {
+            await addTourItinerary(tourId, dayNumber, activity);
+          }
+        }
+      }
+
+      await loadTours();
+      setForm({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false, reviews: '', photos: '', included: '', excluded: '', plan: '' });
+      setFormError('');
+      setUrlInput('');
+      setIncludedItems([]);
+      setExcludedItems([]);
+      setPlanItems([]);
+      setExpandedDays(new Set());
+      setShowModal(false);
+    } catch (err) {
+      console.error('Failed to create tour', err);
+      setFormError('Unable to create tour. Please check your details.');
+    }
   };
 
-  const startEdit = (t: Tour) => {
+  const startEdit = async (t: Tour) => {
     setEditing(t);
-    
-    // Remove $ from price for editing
+    setEditingDetails(null);
     const priceValue = t.price ? t.price.replace(/[$,]/g, '') : '';
-    
-    setForm({
-      name: t.name,
-      location: t.location || '',
-      price: priceValue,
-      description: t.description || '',
-      image: t.image || '',
-      duration: t.duration || '',
-      rating: t.rating ? String(t.rating) : '',
-      popular: !!t.popular,
-      reviews: t.reviews ? String(t.reviews) : '',
-      photos: (t.photos && Array.isArray(t.photos)) ? t.photos.filter(p => p && p.trim()).join(',') : '',
-      included: '',
-      excluded: '',
-      plan: ''
-    });
-    setIncludedItems(t.included && Array.isArray(t.included) ? t.included : []);
-    setExcludedItems(t.excluded && Array.isArray(t.excluded) ? t.excluded : []);
-    
-    // Parse plan structure
-    if (t.plan && Array.isArray(t.plan)) {
-      const parsed: Array<{day: string, activities: string[]}> = [];
-      t.plan.forEach((item, idx) => {
-        // Check if it's the new format with day and activities
-        if (item && typeof item === 'object' && 'day' in item && 'activities' in item) {
-          parsed.push(item as {day: string, activities: string[]});
-        } else if (Array.isArray(item)) {
-          parsed.push({ day: `Day ${idx + 1}`, activities: item });
-        } else {
-          parsed.push({ day: `Day ${idx + 1}`, activities: [String(item)] });
-        }
+
+    try {
+      const detail = await fetchTourDetails(t.id);
+      const imageUrls = detail.images?.map((img: any) => img.imageUrl).filter(Boolean) || [];
+      const mainImage = detail.tour.imageUrl || imageUrls[0] || '';
+      const photos = imageUrls.filter((url: string) => url !== mainImage);
+
+      setForm({
+        name: detail.tour.name,
+        location: detail.tour.location || '',
+        price: detail.tour.price ? String(detail.tour.price) : priceValue,
+        description: detail.tour.description || '',
+        image: mainImage ? toMediaUrl(mainImage) : '',
+        duration: detail.tour.duration ? String(detail.tour.duration) : '',
+        rating: detail.tour.rating ? String(detail.tour.rating) : '',
+        popular: !!detail.tour.isHotDeal,
+        reviews: detail.tour.reviewsCount ? String(detail.tour.reviewsCount) : '',
+        photos: photos.map((url: string) => toMediaUrl(url)).join(','),
+        included: '',
+        excluded: '',
+        plan: ''
       });
-      setPlanItems(parsed);
-    } else {
-      setPlanItems([]);
+
+      setIncludedItems(detail.inclusions?.map((item: any) => item.description) || []);
+      setExcludedItems(detail.exclusions?.map((item: any) => item.description) || []);
+
+      if (detail.itinerary && detail.itinerary.length > 0) {
+        const grouped = detail.itinerary.reduce((acc: Record<string, string[]>, item: any) => {
+          const dayKey = `Day ${item.dayNumber}`;
+          acc[dayKey] = acc[dayKey] || [];
+          acc[dayKey].push(item.activity);
+          return acc;
+        }, {});
+        const parsed = Object.entries(grouped).map(([day, activities]) => ({ day, activities }));
+        setPlanItems(parsed);
+        setExpandedDays(new Set(parsed.map((_, idx) => idx)));
+      } else {
+        setPlanItems([]);
+        setExpandedDays(new Set());
+      }
+
+      setEditingDetails({
+        inclusionIds: detail.inclusions?.map((item: any) => item._id) || [],
+        exclusionIds: detail.exclusions?.map((item: any) => item._id) || [],
+        itineraryIds: detail.itinerary?.map((item: any) => item._id) || [],
+        imageIds: detail.images?.map((item: any) => item._id) || [],
+      });
+    } catch (err) {
+      console.error('Failed to load tour details', err);
+      setForm({
+        name: t.name,
+        location: t.location || '',
+        price: priceValue,
+        description: t.description || '',
+        image: t.image || '',
+        duration: t.duration || '',
+        rating: t.rating ? String(t.rating) : '',
+        popular: !!t.popular,
+        reviews: t.reviews ? String(t.reviews) : '',
+        photos: (t.photos && Array.isArray(t.photos)) ? t.photos.filter(p => p && p.trim()).join(',') : '',
+        included: '',
+        excluded: '',
+        plan: ''
+      });
     }
-    
+
     setFormError('');
     setUrlInput('');
     setIncludedInput('');
     setExcludedInput('');
     setCurrentDay('');
     setCurrentActivity('');
-    setExpandedDays(new Set(Array.from({ length: t.plan?.length || 0 }, (_, i) => i)));
     setShowModal(true);
   };
 
-  const saveEdit = (e: React.FormEvent) => {
+  const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
     const photosArrForValidation = form.photos ? form.photos.split(',').filter(p => p && p.trim()) : [];
-    if (photosArrForValidation.length === 0 && !form.image) {
+    const mainImage = form.image || photosArrForValidation[0] || '';
+    if (!mainImage) {
       setFormError('Please provide at least one photo by uploading or entering an image URL.');
       return;
     }
 
-    const finalPrice = form.price ? `$${form.price}` : '';
+    try {
+      await updateTour(editing.id, {
+        name: form.name,
+        location: form.location,
+        price: Number(form.price) || 0,
+        duration: Number.parseInt(form.duration, 10) || 1,
+        rating: form.rating ? parseFloat(form.rating) : 0,
+        reviewsCount: form.reviews ? Number(form.reviews) : 0,
+        isHotDeal: !!form.popular,
+        description: form.description,
+        imageUrl: mainImage,
+      });
 
-    setItems((s) =>
-      s.map(i =>
-        i.id === editing.id
-          ? {
-              ...i,
-              name: form.name,
-              location: form.location,
-              price: finalPrice,
-              description: form.description,
-              image: form.image,
-              duration: form.duration,
-              rating: form.rating ? parseFloat(form.rating) : undefined,
-              popular: !!form.popular,
-              reviews: form.reviews ? Number(form.reviews) : undefined,
-              photos: (() => {
-                const arr = form.photos ? form.photos.split(',').filter(p => p && p.trim()) : [];
-                if (arr.length === 0 && form.image) return [String(form.image)];
-                return arr.length ? arr : undefined;
-              })(),
-              included: includedItems.length > 0 ? includedItems : undefined,
-              excluded: excludedItems.length > 0 ? excludedItems : undefined,
-              plan: planItems.length > 0 ? planItems : undefined
-            }
-          : i
-      )
-    );
-    setEditing(null);
-    setForm({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false, reviews: '', photos: '', included: '', excluded: '', plan: '' });
-    setFormError('');
-    setUrlInput('');
-    setIncludedItems([]);
-    setExcludedItems([]);
-    setPlanItems([]);
-    setExpandedDays(new Set());
-    setShowModal(false);
+      if (editingDetails) {
+        for (const id of editingDetails.inclusionIds) {
+          await deleteTourInclusion(editing.id, id);
+        }
+        for (const id of editingDetails.exclusionIds) {
+          await deleteTourExclusion(editing.id, id);
+        }
+        for (const id of editingDetails.itineraryIds) {
+          await deleteTourItinerary(editing.id, id);
+        }
+        for (const id of editingDetails.imageIds) {
+          await deleteTourImage(editing.id, id);
+        }
+      }
+
+      const imageUrls = [mainImage, ...photosArrForValidation.filter((p) => p !== mainImage)];
+      for (const url of imageUrls) {
+        await uploadTourImage(editing.id, null, url);
+      }
+
+      for (const item of includedItems) {
+        await addTourInclusion(editing.id, item);
+      }
+      for (const item of excludedItems) {
+        await addTourExclusion(editing.id, item);
+      }
+      if (planItems.length > 0) {
+        for (let index = 0; index < planItems.length; index += 1) {
+          const day = planItems[index];
+          const dayNumber = Number(day.day.match(/(\d+)/)?.[1]) || index + 1;
+          for (const activity of day.activities) {
+            await addTourItinerary(editing.id, dayNumber, activity);
+          }
+        }
+      }
+
+      await loadTours();
+      setEditing(null);
+      setEditingDetails(null);
+      setForm({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false, reviews: '', photos: '', included: '', excluded: '', plan: '' });
+      setFormError('');
+      setUrlInput('');
+      setIncludedItems([]);
+      setExcludedItems([]);
+      setPlanItems([]);
+      setExpandedDays(new Set());
+      setShowModal(false);
+    } catch (err) {
+      console.error('Failed to update tour', err);
+      setFormError('Unable to update tour. Please check your details.');
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditing(null);
+    setEditingDetails(null);
     setForm({ name: '', location: '', price: '', description: '', image: '', duration: '', rating: '', popular: false, reviews: '', photos: '', included: '', excluded: '', plan: '' });
     setUrlInput('');
     setIncludedItems([]);
@@ -549,9 +637,15 @@ export default function CollectionManager() {
     setExpandedDays(new Set());
   };
 
-  const remove = (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Delete this tour?')) return;
-    setItems((s) => s.filter(i => i.id !== id));
+    try {
+      await deleteTour(id);
+      setItems((s) => s.filter(i => i.id !== id));
+    } catch (err) {
+      console.error('Failed to delete tour', err);
+      setFormError('Unable to delete tour.');
+    }
   };
 
   return (

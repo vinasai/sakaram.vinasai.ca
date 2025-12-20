@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
+import { fetchInquiries } from '../api/client';
 
-type Inquiry = { id: number; name: string; email: string; phone: string; message: string };
-
-const TrashIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-);
+type Inquiry = { id: string; name: string; email: string; phone: string; message: string; createdAt: string };
 
 const MailIcon = () => (
   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,59 +42,30 @@ const ClockIcon = () => (
 export default function Inquiries() {
   const [items, setItems] = useState<Inquiry[]>([]);
 
+  const load = async () => {
+    try {
+      const res = await fetchInquiries();
+      const mapped = (res.items || []).map((item: any) => ({
+        id: item._id,
+        name: item.fullName,
+        email: item.email,
+        phone: item.phone || '- ',
+        message: item.message,
+        createdAt: item.createdAt,
+      }));
+      setItems(mapped);
+    } catch (e) {
+      console.warn('Inquiries: failed to load inquiries', e);
+      setItems([]);
+    }
+  };
+
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('inquiries');
-      console.debug('Inquiries: read raw inquiries from localStorage:', raw ? `${raw.length} chars` : 'null');
-      setItems(raw ? JSON.parse(raw) : []);
-    } catch (e) {
-      console.warn('Inquiries: failed to read/parse inquiries', e);
-      setItems([]);
-    }
+    load();
   }, []);
-
-  const remove = (id: number) => {
-    if (!confirm('Delete this inquiry?')) return;
-    const next = items.filter(i => i.id !== id);
-    setItems(next);
-    try {
-      const payload = JSON.stringify(next);
-      localStorage.setItem('inquiries', payload);
-      console.debug('Inquiries: wrote inquiries to localStorage, count=', next.length, 'chars=', payload.length);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'inquiries' } })); } catch (e) {}
-    } catch (e) {
-      console.error('Inquiries: failed to write inquiries to localStorage', e);
-    }
-  };
-
-  const clearAll = () => {
-    if (!confirm('Clear all inquiries?')) return;
-    setItems([]);
-    try {
-      localStorage.removeItem('inquiries');
-      console.debug('Inquiries: removed inquiries from localStorage');
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'inquiries' } })); } catch (e) {}
-    } catch (e) {
-      console.error('Inquiries: failed to remove inquiries from localStorage', e);
-    }
-  };
-
-  // manual refresh button handler
-  const refresh = () => {
-    try {
-      const raw = localStorage.getItem('inquiries');
-      const parsed = raw ? JSON.parse(raw) : [];
-      setItems(Array.isArray(parsed) ? parsed : []);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'inquiries' } })); } catch (e) {}
-    } catch (e) {
-      console.warn('Inquiries: failed to refresh from localStorage', e);
-      setItems([]);
-    }
-  };
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-gray-800">Inquiries</h2>
@@ -107,7 +73,7 @@ export default function Inquiries() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={refresh}
+            onClick={load}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
             title="Refresh inquiries"
           >
@@ -116,19 +82,9 @@ export default function Inquiries() {
             </svg>
             <span className="font-medium">Refresh</span>
           </button>
-          {items.length > 0 && (
-            <button
-              onClick={clearAll}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <TrashIcon />
-              <span className="font-medium">Clear All</span>
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Empty State */}
       {items.length === 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <div className="flex justify-center mb-4 text-gray-400">
@@ -139,12 +95,10 @@ export default function Inquiries() {
         </div>
       )}
 
-      {/* Inquiries List */}
       <div className="space-y-4">
         {items.map(i => (
           <div key={i.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             <div className="p-6">
-              {/* Header with name and timestamp */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -154,20 +108,12 @@ export default function Inquiries() {
                     <h3 className="font-semibold text-gray-900">{i.name}</h3>
                     <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                       <ClockIcon />
-                      <span>{new Date(i.id).toLocaleString()}</span>
+                      <span>{new Date(i.createdAt).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => remove(i.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete inquiry"
-                >
-                  <TrashIcon />
-                </button>
               </div>
 
-              {/* Contact Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3 text-sm">
                   <div className="text-gray-400">
@@ -193,7 +139,6 @@ export default function Inquiries() {
                 </div>
               </div>
 
-              {/* Message */}
               <div className="border-t border-gray-100 pt-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                   <MessageIcon />
