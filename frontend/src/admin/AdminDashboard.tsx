@@ -5,6 +5,7 @@ import Inquiries from './Inquiries';
 import TripRequests from './TripRequests';
 import CollectionManager from './CollectionManager';
 import GalleryManager from './GalleryManager';
+import { clearAuthToken, fetchDashboardStats } from '../api/client';
 
 const HomeIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +72,6 @@ export default function AdminDashboard() {
   const [inquiriesCount, setInquiriesCount] = useState<number | null>(null);
   const [tripRequestsCount, setTripRequestsCount] = useState<number | null>(null);
 
-  // Sync view with URL on mount and handle browser back/forward
   useEffect(() => {
     const updateViewFromURL = () => {
       const pathname = window.location.pathname;
@@ -81,91 +81,31 @@ export default function AdminDashboard() {
 
     updateViewFromURL();
 
-    // Listen for browser back/forward navigation
     window.addEventListener('popstate', updateViewFromURL);
     return () => window.removeEventListener('popstate', updateViewFromURL);
   }, []);
 
-  // Read counts from localStorage
-  const updateCounts = () => {
+  const updateCounts = async () => {
     try {
-      const rawHero = localStorage.getItem('hero_banners');
-      const hero = rawHero ? JSON.parse(rawHero) : [];
-      setHeroCount(Array.isArray(hero) ? hero.length : 0);
-    } catch (e) {
+      const stats = await fetchDashboardStats();
+      setHeroCount(stats.totalBanners);
+      setDealsCount(stats.totalDeals);
+      setToursCount(stats.totalTours);
+      setTotalTourDays(stats.totalTourDays);
+      setInquiriesCount(stats.totalInquiries);
+      setTripRequestsCount(stats.totalTripRequests);
+    } catch (err) {
       setHeroCount(0);
-    }
-
-    try {
-      const rawDeals = localStorage.getItem('deals');
-      const deals = rawDeals ? JSON.parse(rawDeals) : [];
-      setDealsCount(Array.isArray(deals) ? deals.length : 0);
-    } catch (e) {
       setDealsCount(0);
-    }
-
-    try {
-      const rawTours = localStorage.getItem('tours');
-      const tours = rawTours ? JSON.parse(rawTours) : [];
-      setToursCount(Array.isArray(tours) ? tours.length : 0);
-      // compute total days: prefer explicit `days` or plan length, else parse number from duration
-      if (Array.isArray(tours)) {
-        const total = tours.reduce((acc: number, t: any) => {
-          if (t.days) return acc + (Number(t.days) || 0);
-          if (Array.isArray(t.plan) && t.plan.length) return acc + t.plan.length;
-          const d = String(t.duration || '').match(/(\d+)/);
-          if (d) return acc + Number(d[0]);
-          return acc + 1;
-        }, 0);
-        setTotalTourDays(total);
-      } else {
-        setTotalTourDays(0);
-      }
-    } catch (e) {
       setToursCount(0);
       setTotalTourDays(0);
-    }
-
-    try {
-      const rawInq = localStorage.getItem('inquiries');
-      const inq = rawInq ? JSON.parse(rawInq) : [];
-      setInquiriesCount(Array.isArray(inq) ? inq.length : 0);
-    } catch (e) {
       setInquiriesCount(0);
-    }
-
-    try {
-      const rawReq = localStorage.getItem('trip_requests');
-      const req = rawReq ? JSON.parse(rawReq) : [];
-      setTripRequestsCount(Array.isArray(req) ? req.length : 0);
-    } catch (e) {
       setTripRequestsCount(0);
     }
   };
 
   useEffect(() => {
-    // initial counts
     updateCounts();
-
-    // listen for cross-tab storage changes
-    const onStorage = (e: StorageEvent) => {
-      if (!e.key) return;
-      if (['hero_banners', 'deals', 'tours', 'inquiries', 'gallery', 'trip_requests'].includes(e.key)) updateCounts();
-    };
-
-    // listen for our custom in-tab notification
-    const onLocalUpdate = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail || !detail.key) return;
-      if (['hero_banners', 'deals', 'tours', 'inquiries', 'gallery', 'trip_requests'].includes(detail.key)) updateCounts();
-    };
-
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('local-storage-updated', onLocalUpdate as EventListener);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('local-storage-updated', onLocalUpdate as EventListener);
-    };
   }, []);
 
   const go = (v: string) => {
@@ -174,7 +114,7 @@ export default function AdminDashboard() {
   };
 
   const logout = () => {
-    localStorage.removeItem('admin_logged_in');
+    clearAuthToken();
     window.location.pathname = '/admin/login';
   };
 
@@ -190,13 +130,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside
         className={`${
           sidebarOpen ? 'w-64' : 'w-16'
         } bg-slate-900 transition-all duration-300 flex flex-col`}
       >
-        {/* Logo Section */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
           {sidebarOpen && (
             <span className="text-lg font-semibold text-white">Admin Panel</span>
@@ -209,7 +147,6 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Navigation Menu */}
         <nav className="flex-1 py-4 px-2">
           {menuItems.map((item) => {
             const IconComponent = item.icon;
@@ -230,7 +167,6 @@ export default function AdminDashboard() {
           })}
         </nav>
 
-        {/* Logout Button */}
         <div className="p-4 border-t border-slate-700">
           <button
             onClick={logout}
@@ -242,9 +178,7 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div>
             <h1 className="text-xl font-semibold text-gray-800">
@@ -259,102 +193,73 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-6">
           {view === 'home' && (
-            <div className="space-y-6">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Hero Banners</p>
-                          <p className="text-2xl font-semibold text-gray-800 mt-1">{heroCount === null ? '-' : heroCount}</p>
-                    </div>
-                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-                      <ImageIcon />
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                    <ImageIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Hero Banners</h3>
+                    <p className="text-gray-500 text-sm">Homepage sliders</p>
                   </div>
                 </div>
-
-                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Active Deals</p>
-                          <p className="text-2xl font-semibold text-gray-800 mt-1">{dealsCount === null ? '-' : dealsCount}</p>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg text-green-600">
-                      <TagIcon />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Total Tours</p>
-                          <p className="text-2xl font-semibold text-gray-800 mt-1">{toursCount === null ? '-' : toursCount}</p>
-                    </div>
-                    <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
-                      <MapIcon />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Duration (Days) — total</p>
-                          <p className="text-2xl font-semibold text-gray-800 mt-1">{totalTourDays === null ? '-' : totalTourDays}</p>
-                    </div>
-                    <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
-                      <CalendarIcon />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Inquiries</p>
-                          <p className="text-2xl font-semibold text-gray-800 mt-1">{inquiriesCount === null ? '-' : inquiriesCount}</p>
-                    </div>
-                    <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
-                      <MailIcon />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600">Trip Requests</p>
-                          <p className="text-2xl font-semibold text-gray-800 mt-1">{tripRequestsCount === null ? '-' : tripRequestsCount}</p>
-                    </div>
-                    <div className="p-3 bg-yellow-50 rounded-lg text-yellow-600">
-                      <MailIcon />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-3xl font-bold text-gray-900">{heroCount ?? '—'}</p>
               </div>
 
-              {/* Welcome Section */}
-              <div className="bg-white p-6 rounded-lg border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-800 mb-2">Welcome Back</h2>
-                <p className="text-gray-600 mb-4">
-                  Use the sidebar to navigate and manage your website content.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => go('hero')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                  >
-                    Manage Content
-                  </button>
-                  <button
-                    onClick={() => go('inquiries')}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
-                  >
-                    View Inquiries
-                  </button>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+                    <TagIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Deals</h3>
+                    <p className="text-gray-500 text-sm">Active promotions</p>
+                  </div>
                 </div>
+                <p className="text-3xl font-bold text-gray-900">{dealsCount ?? '—'}</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+                    <MapIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Tours</h3>
+                    <p className="text-gray-500 text-sm">Available packages</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">{toursCount ?? '—'}</p>
+                <p className="text-sm text-gray-500 mt-2">Total Days: {totalTourDays ?? '—'}</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">
+                    <MailIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Inquiries</h3>
+                    <p className="text-gray-500 text-sm">Customer messages</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">{inquiriesCount ?? '—'}</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center text-teal-600">
+                    <CalendarIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Trip Requests</h3>
+                    <p className="text-gray-500 text-sm">Booking requests</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">{tripRequestsCount ?? '—'}</p>
               </div>
             </div>
           )}

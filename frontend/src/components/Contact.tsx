@@ -1,5 +1,6 @@
 import { Mail, Phone, Send, MessageCircle, MapPin, Clock } from 'lucide-react';
 import { useState } from 'react';
+import { createInquiry } from '../api/client';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -9,20 +10,25 @@ export default function Contact() {
     countryCode: '+94',
     message: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Persist inquiry to localStorage so admin can view it
+    setIsSubmitting(true);
     try {
-      const existing = localStorage.getItem('inquiries');
-      const arr = existing ? JSON.parse(existing) : [];
-      arr.unshift({ id: Date.now(), ...formData });
-      localStorage.setItem('inquiries', JSON.stringify(arr));
-      // reset
+      await createInquiry({
+        fullName: formData.name,
+        email: formData.email,
+        phone: `${formData.countryCode} ${formData.phone}`.trim(),
+        message: formData.message,
+      });
       setFormData({ name: '', email: '', phone: '', countryCode: '+94', message: '' });
       alert('Message sent — thank you!');
     } catch (err) {
-      console.error('Failed to save inquiry', err);
+      console.error('Failed to send inquiry', err);
+      alert('Unable to send message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -35,23 +41,19 @@ export default function Contact() {
 
   return (
     <section id="contact" className="relative py-20 overflow-hidden">
-      {/* Background Image */}
       <div className="absolute inset-0">
         <img
           src="https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=1920"
           alt="Sri Lanka nature background"
           className="w-full h-full object-cover"
         />
-        {/* Dark Overlay for better readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/70 to-black/75"></div>
       </div>
 
-      {/* Animated Decorative Elements */}
       <div className="absolute top-20 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
       <div className="absolute bottom-20 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
 
       <div className="container mx-auto px-4 relative z-10">
-        {/* Section Header */}
         <div className="text-center mb-12 animate-fade-in-down">
           <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full px-4 py-2 mb-4 shadow-lg">
             <MessageCircle size={16} className="animate-pulse" />
@@ -70,9 +72,7 @@ export default function Contact() {
           </p>
         </div>
 
-        {/* Main Content - Reduced Width */}
         <div className="max-w-2xl mx-auto">
-          {/* Contact Form */}
           <div className="mb-8 animate-fade-in-up">
             <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 border border-white/50 transform hover:scale-[1.01] transition-all duration-500">
               <div className="text-center mb-6">
@@ -81,9 +81,7 @@ export default function Contact() {
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name and Email Row */}
                 <div className="grid md:grid-cols-2 gap-4">
-                  {/* Name Field */}
                   <div className="transform transition-all duration-300 hover:translate-x-1">
                     <label htmlFor="name" className="block text-gray-700 font-semibold mb-1.5 text-sm">
                       Full Name *
@@ -100,7 +98,6 @@ export default function Contact() {
                     />
                   </div>
 
-                  {/* Email Field */}
                   <div className="transform transition-all duration-300 hover:translate-x-1">
                     <label htmlFor="email" className="block text-gray-700 font-semibold mb-1.5 text-sm">
                       Email Address *
@@ -118,7 +115,6 @@ export default function Contact() {
                   </div>
                 </div>
 
-                {/* Phone Field */}
                 <div className="transform transition-all duration-300 hover:translate-x-1">
                   <label htmlFor="phone" className="block text-gray-700 font-semibold mb-1.5 text-sm">
                     Phone Number *
@@ -194,7 +190,6 @@ export default function Contact() {
                   </div>
                 </div>
 
-                {/* Message Field */}
                 <div className="transform transition-all duration-300 hover:translate-x-1">
                   <label htmlFor="message" className="block text-gray-700 font-semibold mb-1.5 text-sm">
                     Your Message *
@@ -203,123 +198,53 @@ export default function Contact() {
                     id="message"
                     name="message"
                     required
-                    rows={4}
                     value={formData.message}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white resize-none text-sm"
-                    placeholder="Tell us about your dream trip to Sri Lanka..."
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    rows={4}
+                    className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
+                    placeholder="Tell us about your dream trip..."
                   ></textarea>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
-                  className="group relative w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:via-teal-700 hover:to-cyan-700 text-white font-bold py-3 rounded-lg transition-all duration-500 flex items-center justify-center space-x-2 shadow-xl hover:shadow-2xl hover:scale-[1.02] overflow-hidden"
+                  disabled={isSubmitting}
+                  className="w-full mt-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-3 rounded-xl font-bold text-base hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg transform hover:scale-[1.02] disabled:opacity-70"
                 >
-                  <span className="relative z-10">Send Message</span>
-                  <Send size={18} className="relative z-10 transform group-hover:translate-x-2 group-hover:rotate-45 transition-all duration-500" />
-                  {/* Animated Background */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
+                  <Send size={18} />
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
-
-              {/* Privacy Note */}
-              <div className="mt-4 flex items-center justify-center space-x-2 text-xs text-gray-500">
-                <svg className="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-                <span>We respect your privacy. Your information will never be shared.</span>
-              </div>
             </div>
           </div>
 
-          {/* Contact Information Cards - Below Form */}
-          <div className="grid md:grid-cols-2 gap-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-            {/* Phone Card */}
-            <div className="group bg-white/90 backdrop-blur-md rounded-xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/50 hover:bg-white transform hover:-translate-y-2">
-              <div className="flex items-start space-x-3">
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-3 rounded-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg">
-                  <Phone size={20} className="text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-gray-800 mb-1 text-base">Call Us</h4>
-                  <a href="tel:+94760465855" className="text-gray-600 hover:text-emerald-600 transition-colors font-medium block text-sm">
-                    +94 76 046 5855
-                  </a>
-                  <div className="flex items-center mt-1.5 text-xs text-gray-500">
-                    <Clock size={12} className="mr-1" />
-                    <span>Available 24/7</span>
-                  </div>
-                </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <Phone size={20} className="text-emerald-600" />
               </div>
+              <h4 className="text-base font-bold text-gray-800 mb-1">Call Us</h4>
+              <p className="text-gray-600 text-sm">+94 76 046 5855</p>
             </div>
 
-            {/* Email Card */}
-            <div className="group bg-white/90 backdrop-blur-md rounded-xl p-5 shadow-xl hover:shadow-2xl transition-all duration-500 border border-white/50 hover:bg-white transform hover:-translate-y-2">
-              <div className="flex items-start space-x-3">
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-3 rounded-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg">
-                  <Mail size={20} className="text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-gray-800 mb-1 text-base">Email Us</h4>
-                  <a href="mailto:sakaramtours@gmail.com" className="text-gray-600 hover:text-emerald-600 transition-colors font-medium block break-all text-sm">
-                    sakaramtours@gmail.com
-                  </a>
-                  <div className="flex items-center mt-1.5 text-xs text-gray-500">
-                    <Clock size={12} className="mr-1" />
-                    <span>Quick Response</span>
-                  </div>
-                </div>
+            <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <Mail size={20} className="text-emerald-600" />
               </div>
+              <h4 className="text-base font-bold text-gray-800 mb-1">Email Us</h4>
+              <p className="text-gray-600 text-sm">info@sarkamtours.com</p>
             </div>
-          </div>
 
-          {/* Additional Info Banner */}
-          <div className="mt-6 bg-gradient-to-r from-emerald-600/90 via-teal-600/90 to-cyan-600/90 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/20 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-            <div className="flex items-center justify-center space-x-2 text-white">
-              <MapPin size={18} className="animate-bounce" />
-              <p className="text-center font-medium text-sm">
-                Serving travelers across Sri Lanka with personalized tour experiences
-              </p>
+            <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <Clock size={20} className="text-emerald-600" />
+              </div>
+              <h4 className="text-base font-bold text-gray-800 mb-1">Working Hours</h4>
+              <p className="text-gray-600 text-sm">Mon - Sat: 9AM - 6PM</p>
             </div>
           </div>
         </div>
-
       </div>
-
-      {/* Animations */}
-      <style>{`
-        @keyframes fade-in-down {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(40px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in-down {
-          animation: fade-in-down 0.8s ease-out forwards;
-        }
-
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </section>
   );
 }

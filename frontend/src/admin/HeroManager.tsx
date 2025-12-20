@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
+import { createHeroBanner, deleteHeroBanner, fetchHeroBanners, toMediaUrl, updateHeroBanner } from '../api/client';
 
-type Hero = { id: number; title: string; subtitle?: string; image?: string };
+type Hero = { id: string; title: string; subtitle?: string; imageUrl?: string };
+
+type FormState = {
+  title: string;
+  subtitle: string;
+  imageFile: File | null;
+  imagePreview: string;
+};
 
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,99 +44,103 @@ export default function HeroManager() {
   const [items, setItems] = useState<Hero[]>([]);
   const [editing, setEditing] = useState<Hero | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ title: '', subtitle: '', image: '' });
+  const [form, setForm] = useState<FormState>({ title: '', subtitle: '', imageFile: null, imagePreview: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((prev) => ({ ...prev, image: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
+    const preview = URL.createObjectURL(file);
+    setForm((prev) => ({ ...prev, imageFile: file, imagePreview: preview }));
+  };
+
+  const loadItems = async () => {
+    try {
+      const res = await fetchHeroBanners(true);
+      const mapped = (res.items || []).map((item: any) => ({
+        id: item._id,
+        title: item.title,
+        subtitle: item.subtitle,
+        imageUrl: item.imageUrl,
+      }));
+      setItems(mapped);
+    } catch (err) {
+      console.error('Failed to load hero banners', err);
+      setItems([]);
+    }
   };
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('hero_banners');
-      console.debug('HeroManager: read raw hero_banners from localStorage:', raw ? `${raw.length} chars` : 'null');
-      if (!raw) { setItems([]); return; }
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setItems(parsed);
-      else setItems([]);
-    } catch (e) {
-      console.warn('HeroManager: failed to read/parse hero_banners from localStorage', e);
-      setItems([]);
-    }
+    loadItems();
   }, []);
-
-  useEffect(() => {
-    try {
-      if (items.length === 0) {
-        const existingRaw = localStorage.getItem('hero_banners');
-        try {
-          const existing = existingRaw ? JSON.parse(existingRaw) : null;
-          if (Array.isArray(existing) && existing.length > 0) {
-            console.warn('HeroManager: skipping write of empty hero_banners to avoid overwriting existing data');
-            return;
-          }
-        } catch (e) {
-          // continue to write if existing parse fails
-        }
-      }
-
-      const payload = JSON.stringify(items);
-      localStorage.setItem('hero_banners', payload);
-      console.debug('HeroManager: wrote hero_banners to localStorage, count=', items.length, 'chars=', payload.length);
-      try { window.dispatchEvent(new CustomEvent('local-storage-updated', { detail: { key: 'hero_banners' } })); } catch (e) {}
-    } catch (e) {
-      console.error('HeroManager: failed to write hero_banners to localStorage', e);
-    }
-  }, [items]);
 
   const openAddModal = () => {
     setEditing(null);
-    setForm({ title: '', subtitle: '', image: '' });
+    setForm({ title: '', subtitle: '', imageFile: null, imagePreview: '' });
     setShowModal(true);
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newItem: Hero = { id: Date.now(), title: form.title, subtitle: form.subtitle, image: form.image };
-    setItems((s) => [newItem, ...s]);
-    setForm({ title: '', subtitle: '', image: '' });
-    setShowModal(false);
+    if (!form.imageFile) {
+      alert('Please select an image.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await createHeroBanner({ title: form.title, subtitle: form.subtitle }, form.imageFile);
+      await loadItems();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Failed to create banner', err);
+      alert('Unable to create banner.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const startEdit = (h: Hero) => {
     setEditing(h);
-    setForm({ title: h.title, subtitle: h.subtitle || '', image: h.image || '' });
+    setForm({ title: h.title, subtitle: h.subtitle || '', imageFile: null, imagePreview: h.imageUrl ? toMediaUrl(h.imageUrl) : '' });
     setShowModal(true);
   };
 
-  const saveEdit = (e: React.FormEvent) => {
+  const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
-    setItems((s) => s.map(i => i.id === editing.id ? { ...i, title: form.title, subtitle: form.subtitle, image: form.image } : i));
-    setEditing(null);
-    setForm({ title: '', subtitle: '', image: '' });
-    setShowModal(false);
+    setIsSaving(true);
+    try {
+      await updateHeroBanner(editing.id, { title: form.title, subtitle: form.subtitle }, form.imageFile);
+      await loadItems();
+      setShowModal(false);
+      setEditing(null);
+    } catch (err) {
+      console.error('Failed to update banner', err);
+      alert('Unable to update banner.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditing(null);
-    setForm({ title: '', subtitle: '', image: '' });
+    setForm({ title: '', subtitle: '', imageFile: null, imagePreview: '' });
   };
 
-  const remove = (id: number) => {
+  const remove = async (id: string) => {
     if (!confirm('Delete this banner?')) return;
-    setItems((s) => s.filter(i => i.id !== id));
+    try {
+      await deleteHeroBanner(id);
+      setItems((s) => s.filter((i) => i.id !== id));
+    } catch (err) {
+      console.error('Failed to delete banner', err);
+      alert('Unable to delete banner.');
+    }
   };
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-gray-800">Hero Banners</h2>
@@ -143,7 +155,6 @@ export default function HeroManager() {
         </button>
       </div>
 
-      {/* Banners Grid */}
       <div className="grid grid-cols-1 gap-4">
         {items.length === 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
@@ -164,8 +175,8 @@ export default function HeroManager() {
           <div key={i.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4 p-4">
               <div className="w-32 h-20 bg-gray-100 flex items-center justify-center overflow-hidden rounded-lg flex-shrink-0">
-                {i.image ? (
-                  <img src={i.image} alt="banner" className="w-full h-full object-cover" />
+                {i.imageUrl ? (
+                  <img src={toMediaUrl(i.imageUrl)} alt="banner" className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-gray-400">
                     <ImageIcon />
@@ -199,11 +210,9 @@ export default function HeroManager() {
         ))}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header - Enhanced */}
             <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">
@@ -221,7 +230,6 @@ export default function HeroManager() {
               </button>
             </div>
 
-            {/* Modal Body - Scrollable */}
             <div className="overflow-y-auto flex-1">
               <form onSubmit={editing ? saveEdit : handleAdd} className="p-8 space-y-6">
                 <div>
@@ -231,9 +239,9 @@ export default function HeroManager() {
                   <input
                     value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Enter a captivating banner title"
                     required
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="e.g., Explore Sri Lanka"
                   />
                 </div>
 
@@ -245,94 +253,40 @@ export default function HeroManager() {
                     value={form.subtitle}
                     onChange={e => setForm({ ...form, subtitle: e.target.value })}
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Add a descriptive subtitle"
+                    placeholder="e.g., Discover paradise"
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <label className="block text-sm font-semibold text-gray-700">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Banner Image
                   </label>
-                  
-                  <div className="flex gap-2">
-                    <input
-                      value={form.image}
-                      onChange={e => setForm({ ...form, image: e.target.value })}
-                      className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                    {form.image && form.image.startsWith('http') && (
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, image: '' })}
-                        className="px-4 py-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors font-semibold text-sm"
-                        title="Clear URL"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  
-                  <label className="flex items-center justify-center gap-3 w-full border-3 border-dashed border-gray-300 rounded-xl px-6 py-5 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group">
-                    <svg className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <div className="text-center">
-                      <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">
-                        Upload from Device
-                      </span>
-                      <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WEBP up to 10MB</p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFile}
-                      className="hidden"
-                    />
-                  </label>
-                  
-                  {form.image && (
-                    <div className="mt-4 w-full h-48 overflow-hidden rounded-xl border-2 border-gray-200 shadow-sm relative group">
-                      <img 
-                        src={form.image} 
-                        alt="preview" 
-                        className="w-full h-full object-cover" 
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent && !parent.querySelector('.error-msg')) {
-                            const errorDiv = document.createElement('div');
-                            errorDiv.className = 'error-msg flex items-center justify-center h-full bg-red-50 text-red-600 text-sm';
-                            errorDiv.textContent = 'Failed to load image. Check URL.';
-                            parent.appendChild(errorDiv);
-                          }
-                        }}
-                      />
-                      <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
-                        Preview
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                    {form.imagePreview ? (
+                      <img src={form.imagePreview} alt="preview" className="w-full h-48 object-cover rounded-lg mb-4" />
+                    ) : (
+                      <div className="text-gray-400 flex flex-col items-center">
+                        <ImageIcon />
+                        <p className="text-sm mt-2">Upload an image</p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    <input type="file" accept="image/*" onChange={handleFile} className="mt-4" />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <button type="button" onClick={closeModal} className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-70"
+                  >
+                    {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Banner'}
+                  </button>
                 </div>
               </form>
-            </div>
-
-            {/* Modal Footer - Fixed */}
-            <div className="flex gap-4 px-8 py-6 border-t border-gray-200 bg-gray-50">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-semibold shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={editing ? saveEdit : handleAdd}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl"
-              >
-                {editing ? ' Save Changes' : ' Create Banner'}
-              </button>
             </div>
           </div>
         </div>
