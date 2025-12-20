@@ -53,31 +53,6 @@ router.post(
   }
 );
 
-router.put(
-  "/:id",
-  requireAuth,
-  upload.single("image"),
-  [body("title").optional().trim().notEmpty(), body("category").optional().trim().notEmpty()],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const updates = { ...req.body };
-    if (req.file) {
-      updates.imageUrl = `/uploads/${req.file.filename}`;
-    }
-
-    const photo = await GalleryPhoto.findByIdAndUpdate(req.params.id, updates, { new: true });
-    if (!photo) {
-      return res.status(404).json({ message: "Photo not found" });
-    }
-
-    return res.json(photo);
-  }
-);
-
 router.delete("/:id", requireAuth, async (req, res) => {
   const photo = await GalleryPhoto.findByIdAndDelete(req.params.id);
   if (!photo) {

@@ -10,7 +10,6 @@ const tourSchema = new mongoose.Schema(
     reviewsCount: { type: Number, default: 0 },
     isHotDeal: { type: Boolean, default: false },
     description: { type: String, required: true },
-    imageUrl: { type: String },
   },
   { timestamps: true }
 );

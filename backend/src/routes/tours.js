@@ -59,7 +59,6 @@ router.post(
     body("reviewsCount").optional().isInt({ min: 0 }),
     body("isHotDeal").optional().isBoolean(),
     body("description").trim().notEmpty(),
-    body("imageUrl").optional().isString(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -76,7 +75,6 @@ router.post(
       reviewsCount: req.body.reviewsCount || 0,
       isHotDeal: req.body.isHotDeal || false,
       description: req.body.description,
-      imageUrl: req.body.imageUrl,
     });
 
     return res.status(201).json(tour);
@@ -95,7 +93,6 @@ router.put(
     body("reviewsCount").optional().isInt({ min: 0 }),
     body("isHotDeal").optional().isBoolean(),
     body("description").optional().trim().notEmpty(),
-    body("imageUrl").optional().isString(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -236,14 +233,13 @@ router.post(
   requireAuth,
   upload.single("image"),
   async (req, res) => {
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl;
-    if (!imageUrl) {
+    if (!req.file) {
       return res.status(400).json({ message: "Image is required" });
     }
 
     const image = await TourImage.create({
       tourId: req.params.id,
-      imageUrl,
+      imageUrl: `/uploads/${req.file.filename}`,
     });
 
     return res.status(201).json(image);
