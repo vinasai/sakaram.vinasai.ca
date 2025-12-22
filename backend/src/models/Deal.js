@@ -4,6 +4,9 @@ const dealSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
+    tagline: { type: String },
+    duration: { type: String },
+    inclusions: { type: [String], default: [] },
     price: { type: Number },
     discount: { type: Number },
     imageUrl: { type: String, required: true },

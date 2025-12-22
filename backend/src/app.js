@@ -11,6 +11,7 @@ const galleryRoutes = require("./routes/gallery");
 const inquiryRoutes = require("./routes/inquiries");
 const tripRequestRoutes = require("./routes/tripRequests");
 const dashboardRoutes = require("./routes/dashboard");
+const dealRequestRoutes = require("./routes/dealRequestRoutes");
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use("/gallery", galleryRoutes);
 app.use("/inquiries", inquiryRoutes);
 app.use("/trip-requests", tripRequestRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/deal-requests", dealRequestRoutes);
 
 app.use((err, req, res, next) => {
   if (err.message?.includes("Only image uploads")) {

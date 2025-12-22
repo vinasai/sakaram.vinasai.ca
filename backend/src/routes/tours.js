@@ -51,14 +51,14 @@ router.post(
   "/",
   requireAuth,
   [
-    body("name").trim().notEmpty(),
-    body("location").trim().notEmpty(),
-    body("price").isFloat({ min: 0 }),
-    body("duration").isInt({ min: 1 }),
-    body("rating").optional().isFloat({ min: 0, max: 5 }),
-    body("reviewsCount").optional().isInt({ min: 0 }),
+    body("name").trim().notEmpty().withMessage("Tour name is required"),
+    body("location").trim().notEmpty().withMessage("Location is required"),
+    body("price").isFloat({ min: 0 }).withMessage("Price must be a positive number"),
+    body("duration").isInt({ min: 1 }).withMessage("Duration must be at least 1 day/hour"),
+    body("rating").optional().isFloat({ min: 0, max: 5 }).withMessage("Rating must be between 0 and 5"),
+    body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
-    body("description").trim().notEmpty(),
+    body("description").trim().notEmpty().withMessage("Description is required"),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -85,14 +85,14 @@ router.put(
   "/:id",
   requireAuth,
   [
-    body("name").optional().trim().notEmpty(),
-    body("location").optional().trim().notEmpty(),
-    body("price").optional().isFloat({ min: 0 }),
-    body("duration").optional().isInt({ min: 1 }),
-    body("rating").optional().isFloat({ min: 0, max: 5 }),
-    body("reviewsCount").optional().isInt({ min: 0 }),
+    body("name").optional().trim().notEmpty().withMessage("Tour name cannot be empty"),
+    body("location").optional().trim().notEmpty().withMessage("Location cannot be empty"),
+    body("price").optional().isFloat({ min: 0 }).withMessage("Price must be a positive number"),
+    body("duration").optional().isInt({ min: 1 }).withMessage("Duration must be at least 1 day/hour"),
+    body("rating").optional().isFloat({ min: 0, max: 5 }).withMessage("Rating must be between 0 and 5"),
+    body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
-    body("description").optional().trim().notEmpty(),
+    body("description").optional().trim().notEmpty().withMessage("Description cannot be empty"),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -233,14 +233,29 @@ router.post(
   requireAuth,
   upload.single("image"),
   async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "Image is required" });
+    // Accept either a file upload OR an imageUrl in the request body
+    let imageUrl;
+
+    if (req.file) {
+      // File was uploaded
+      imageUrl = `/uploads/${req.file.filename}`;
+    } else if (req.body.imageUrl) {
+      // Image URL was provided
+      imageUrl = req.body.imageUrl;
+    } else {
+      return res.status(400).json({ message: "Image file or imageUrl is required" });
     }
 
     const image = await TourImage.create({
       tourId: req.params.id,
-      imageUrl: `/uploads/${req.file.filename}`,
+      imageUrl: imageUrl,
     });
+
+    const tour = await Tour.findById(req.params.id);
+    if (tour && !tour.imageUrl) {
+      tour.imageUrl = imageUrl;
+      await tour.save();
+    }
 
     return res.status(201).json(image);
   }
@@ -254,6 +269,14 @@ router.delete("/:id/images/:imageId", requireAuth, async (req, res) => {
 
   if (!image) {
     return res.status(404).json({ message: "Tour image not found" });
+  }
+
+  const tour = await Tour.findById(req.params.id);
+  // If the deleted image was the main one, set a new main image
+  if (tour && tour.imageUrl === image.imageUrl) {
+    const nextImage = await TourImage.findOne({ tourId: req.params.id });
+    tour.imageUrl = nextImage ? nextImage.imageUrl : null;
+    await tour.save();
   }
 
   return res.status(204).send();

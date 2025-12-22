@@ -33,7 +33,7 @@ export default function About() {
   ];
 
   return (
-    <section id="about" className="relative py-24 bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+    <section id="about" className="relative py-24 bg-gradient-to-b from-gray-50 to-white overflow-hidden scroll-mt-28">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-100 rounded-full blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-100 rounded-full blur-3xl opacity-30 translate-x-1/2 translate-y-1/2"></div>
@@ -42,16 +42,16 @@ export default function About() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center space-x-2 bg-emerald-50 text-emerald-700 rounded-full px-4 py-2 mb-4">
-            <MapPin size={16} />
+
             <span className="text-sm font-semibold">About Us</span>
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-4">
             Echoes of <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Sakaram</span>
           </h2>
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <div className="w-16 h-1 bg-emerald-600 rounded-full"></div>
-            <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
-            <div className="w-8 h-1 bg-emerald-600 rounded-full"></div>
+          <div className="flex items-center justify-center space-x-2 mb-6">
+            <div className="w-20 h-1 bg-gradient-to-r from-transparent via-emerald-600 to-transparent rounded-full"></div>
+            <div className="w-3 h-3 bg-emerald-600 rounded-full animate-pulse"></div>
+            <div className="w-20 h-1 bg-gradient-to-r from-transparent via-teal-600 to-transparent rounded-full"></div>
           </div>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto mt-4">
             Your trusted partner in discovering the magical island of Sri Lanka

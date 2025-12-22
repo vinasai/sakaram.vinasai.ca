@@ -1,10 +1,13 @@
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Phone, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import sakaramLogo from '../pics/sarkam.png';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [activeItem, setActiveItem] = useState('home');
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,17 +17,54 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Update active item based on current route
+  useEffect(() => {
+    const path = location.pathname;
+    const hash = location.hash;
+
+    if (path === '/') {
+      if (hash) {
+        const section = hash.substring(1); // Remove '#'
+        if (['tours', 'deals', 'about', 'services', 'contact'].includes(section)) {
+          setActiveItem(section);
+        } else {
+          setActiveItem('home');
+        }
+      } else {
+        setActiveItem('home');
+      }
+    } else {
+      // Remove leading slash and check against known IDs
+      const section = path.substring(1);
+      if (['tours', 'deals', 'about', 'services', 'contact'].includes(section)) {
+        setActiveItem(section);
+      } else {
+        setActiveItem('');
+      }
+    }
+  }, [location.pathname, location.hash]);
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMenuOpen]);
+
   const scrollToSection = (id: string) => {
-    // If clicking login, open admin panel in new tab
+    setActiveItem(id);
+
     if (id === 'login') {
       if (typeof window !== 'undefined') {
-        // If an external admin URL is configured, open it in a new tab.
-        // Otherwise open the internal admin login in a new tab as well.
         const adminUrl = (import.meta.env.VITE_ADMIN_PANEL_URL as string) || '';
         if (adminUrl && (adminUrl.startsWith('http://') || adminUrl.startsWith('https://'))) {
           window.open(adminUrl, '_blank');
         } else {
-          // open the local admin login route within this app in a new tab
           window.open('/admin/login', '_blank');
         }
       }
@@ -32,7 +72,6 @@ export default function Header() {
       return;
     }
 
-    // If clicking deals, navigate to the deals page
     if (id === 'deals') {
       if (typeof window !== 'undefined') {
         window.location.href = '/deals';
@@ -41,23 +80,18 @@ export default function Header() {
       return;
     }
 
-    // If navigating to the Contact or About or Services page, route to that page.
     if (id === 'contact' || id === 'about' || id === 'services') {
       const targetPath = `/${id}`;
-      // If already on the target path, just scroll to the section.
       if (typeof window !== 'undefined' && window.location.pathname === targetPath) {
         const element = document.getElementById(id);
         if (element) element.scrollIntoView({ behavior: 'smooth' });
       } else if (typeof window !== 'undefined') {
-        // Navigate to the page (full load). The dev server and typical SPA hosting should
-        // serve index.html for this route.
         window.location.href = targetPath;
       }
       setIsMenuOpen(false);
       return;
     }
 
-    // For other sections: if the section exists on the current page, scroll to it.
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
@@ -65,10 +99,7 @@ export default function Header() {
       return;
     }
 
-    // If the element isn't present (for example, we're on /contact), navigate to the home
-    // route with a hash so the browser will open the home and jump to the section.
     if (typeof window !== 'undefined') {
-      // Use absolute path with hash to ensure navigation from any route.
       window.location.href = `/#${id}`;
     }
     setIsMenuOpen(false);
@@ -80,121 +111,165 @@ export default function Header() {
     { id: 'deals', label: 'Deals' },
     { id: 'about', label: 'About' },
     { id: 'services', label: 'Services' },
-    { id: 'gallery', label: 'Gallery' },
     { id: 'contact', label: 'Contact' },
-    { id: 'login', label: 'Login' }
   ];
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-white/80 backdrop-blur-lg shadow-lg'
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
+          ? 'bg-white shadow-lg shadow-gray-200/50'
           : 'bg-white/95 backdrop-blur-sm'
-      }`}
-    >
-      <nav className="container mx-auto px-5 py-1">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center cursor-pointer" onClick={() => scrollToSection('home')}>
-            <img 
-              src={sakaramLogo} 
-              alt="Sarkam Tours Logo" 
-              className="h-16 w-auto"
-            />
+          }`}
+      >
+        {/* Top Bar - Optional promotional strip */}
+        <div className={`bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm transition-all duration-300 ${isScrolled ? 'h-0 overflow-hidden opacity-0' : 'py-2'
+          }`}>
+          <div className="container mx-auto px-6 flex items-center justify-center gap-6">
+            <span className="flex items-center gap-2">
+              <Phone size={14} />
+              <span>+94 76 046 5855</span>
+            </span>
+            <span className="hidden sm:block text-emerald-200">|</span>
+            <span className="hidden sm:block">Discover Sri Lanka with Local Experts</span>
           </div>
+        </div>
 
-          {/* Desktop Navigation */}
-          <ul className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  onClick={() => scrollToSection(item.id)}
-                  className="relative px-4 py-2 text-gray-700 font-medium transition-all duration-300 hover:text-emerald-600 group"
-                >
-                  {item.label}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300 group-hover:w-full"></span>
-                </button>
-              </li>
-            ))}
-            <li>
+        {/* Main Navigation */}
+        <nav className="container mx-auto px-14">
+          <div className="flex items-center justify-between h-16 lg:h-20">
+
+            {/* Logo */}
+            <div
+              className="flex items-center cursor-pointer group"
+              onClick={() => scrollToSection('home')}
+            >
+              <div className="relative">
+                <img
+                  src={sakaramLogo}
+                  alt="Sarkam Tours Logo"
+                  className="h-12 lg:h-14 w-auto transition-transform group-hover:scale-105"
+                />
+              </div>
+            </div>
+
+            {/* Desktop Navigation - Centered */}
+            <div className="hidden lg:flex items-center">
+              <div className="flex items-center bg-gray-50 rounded-full px-2 py-1.5">
+                {navItems.map((item, index) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className={`relative px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${activeItem === item.id
+                      ? 'bg-white text-emerald-600 shadow-sm'
+                      : 'text-gray-600 hover:text-emerald-600 hover:bg-white/50'
+                      }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Section - CTA */}
+            <div className="hidden lg:flex items-center gap-4">
               <button
                 onClick={() => scrollToSection('contact')}
-                className="ml-4 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300"
+                className="group flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-full hover:shadow-lg hover:shadow-emerald-200 transition-all"
               >
                 Book Now
+                <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
               </button>
-            </li>
-          </ul>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden relative w-10 h-10 flex items-center justify-center text-gray-700 hover:text-emerald-600 transition-colors"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            <div className="relative w-6 h-6">
-              <span
-                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
-                  isMenuOpen ? 'opacity-0 rotate-180' : 'opacity-100 rotate-0'
-                }`}
-              >
-                <Menu size={24} />
-              </span>
-              <span
-                className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
-                  isMenuOpen ? 'opacity-100 rotate-0' : 'opacity-0 rotate-180'
-                }`}
-              >
-                <X size={24} />
-              </span>
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              className="lg:hidden relative w-12 h-12 flex items-center justify-center rounded-full bg-gray-50 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      <div
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        onClick={() => setIsMenuOpen(false)}
+      />
+
+      {/* Mobile Menu Drawer */}
+      <div
+        className={`fixed top-0 right-0 h-full w-[85%] max-w-sm bg-white z-50 lg:hidden shadow-2xl transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+      >
+        {/* Mobile Menu Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <img
+            src={sakaramLogo}
+            alt="Sarkam Tours Logo"
+            className="h-10 w-auto"
+          />
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        {/* Mobile Navigation */}
-        <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-            isMenuOpen ? 'max-h-[500px] opacity-100 mt-6' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <ul className="space-y-2 pb-4">
-            {navItems.map((item, index) => (
-              <li
-                key={item.id}
-                className={`transform transition-all duration-300 ${
-                  isMenuOpen
-                    ? 'translate-x-0 opacity-100'
-                    : '-translate-x-4 opacity-0'
-                }`}
-                style={{ transitionDelay: `${index * 50}ms` }}
-              >
-                <button
-                  onClick={() => scrollToSection(item.id)}
-                  className="block w-full text-left px-4 py-3 text-gray-700 font-medium hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200"
-                >
-                  {item.label}
-                </button>
-              </li>
-            ))}
-            <li
-              className={`transform transition-all duration-300 ${
-                isMenuOpen
-                  ? 'translate-x-0 opacity-100'
-                  : '-translate-x-4 opacity-0'
-              }`}
-              style={{ transitionDelay: `${navItems.length * 50}ms` }}
+        {/* Mobile Menu Content */}
+        <div className="flex flex-col h-[calc(100%-80px)]">
+          {/* Navigation Links */}
+          <nav className="flex-1 overflow-y-auto py-6 px-4">
+            <ul className="space-y-1">
+              {navItems.map((item, index) => (
+                <li key={item.id}>
+                  <button
+                    onClick={() => scrollToSection(item.id)}
+                    className={`flex items-center justify-between w-full px-4 py-3.5 rounded-xl font-medium transition-all ${activeItem === item.id
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    <span className="text-[15px]">{item.label}</span>
+                    <ChevronRight size={18} className={`transition-colors ${activeItem === item.id ? 'text-emerald-400' : 'text-gray-300'
+                      }`} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Mobile Menu Footer */}
+          <div className="p-5 border-t border-gray-100 space-y-4 bg-gray-50/50">
+            {/* Contact Info */}
+            <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <Phone size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Call us anytime</div>
+                <div className="font-semibold text-gray-900">+94 76 046 5855</div>
+              </div>
+            </div>
+
+            {/* Book Now Button */}
+            <button
+              onClick={() => scrollToSection('contact')}
+              className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              <button
-                onClick={() => scrollToSection('contact')}
-                className="block w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-300 text-center"
-              >
-                Book Now
-              </button>
-            </li>
-          </ul>
+              Book Your Adventure
+              <ChevronRight size={18} />
+            </button>
+          </div>
         </div>
-      </nav>
-    </header>
+      </div>
+
+
+    </>
   );
 }

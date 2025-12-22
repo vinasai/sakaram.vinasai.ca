@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import HeroManager from './HeroManager';
 import DealsManager from './DealsManager';
+import DealRequestsManager from './DealRequestsManager';
 import Inquiries from './Inquiries';
 import TripRequests from './TripRequests';
-import CollectionManager from './CollectionManager';
+import TourManager from './TourManager';
 import GalleryManager from './GalleryManager';
 import { clearAuthToken, fetchDashboardStats } from '../api/client';
 
@@ -22,6 +23,12 @@ const ImageIcon = () => (
 const TagIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+  </svg>
+);
+
+const DealReqIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
   </svg>
 );
 
@@ -62,11 +69,41 @@ const MenuIcon = () => (
   </svg>
 );
 
+const ChevronDown = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
+const ChevronRight = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+type MenuItem =
+  | { type: 'item'; id: string; label: string; icon: () => JSX.Element }
+  | {
+    type: 'group';
+    id: string;
+    label: string;
+    icon: () => JSX.Element;
+    children: Array<{ id: string; label: string; icon: () => JSX.Element }>;
+  };
+
 export default function AdminDashboard() {
   const [view, setView] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // groups open/close
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    deals_group: true,
+    tours_group: true,
+  });
+
   const [heroCount, setHeroCount] = useState<number | null>(null);
   const [dealsCount, setDealsCount] = useState<number | null>(null);
+  const [dealRequestsCount, setDealRequestsCount] = useState<number | null>(null);
   const [toursCount, setToursCount] = useState<number | null>(null);
   const [totalTourDays, setTotalTourDays] = useState<number | null>(null);
   const [inquiriesCount, setInquiriesCount] = useState<number | null>(null);
@@ -94,6 +131,8 @@ export default function AdminDashboard() {
       setTotalTourDays(stats.totalTourDays);
       setInquiriesCount(stats.totalInquiries);
       setTripRequestsCount(stats.totalTripRequests);
+      // If backend doesn't provide this yet, keep null
+      setDealRequestsCount((stats as any).totalDealRequests ?? null);
     } catch (err) {
       setHeroCount(0);
       setDealsCount(0);
@@ -101,6 +140,7 @@ export default function AdminDashboard() {
       setTotalTourDays(0);
       setInquiriesCount(0);
       setTripRequestsCount(0);
+      setDealRequestsCount(0);
     }
   };
 
@@ -118,51 +158,113 @@ export default function AdminDashboard() {
     window.location.pathname = '/admin/login';
   };
 
-  const menuItems = [
-    { id: 'home', label: 'Dashboard', icon: HomeIcon },
-    { id: 'hero', label: 'Hero Banners', icon: ImageIcon },
-    { id: 'deals', label: 'Deals', icon: TagIcon },
-    { id: 'tours', label: 'Tours', icon: MapIcon },
-    { id: 'gallery', label: 'Gallery', icon: CameraIcon },
-    { id: 'inquiries', label: 'Inquiries', icon: MailIcon },
-    { id: 'trip_requests', label: 'Trip Requests', icon: MailIcon },
+  const toggleGroup = (groupId: string) => {
+    setOpenGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
+
+  // ✅ Deals & Tours become groups, with submenus inside
+  const menuItems: MenuItem[] = [
+    { type: 'item', id: 'home', label: 'Dashboard', icon: HomeIcon },
+    { type: 'item', id: 'hero', label: 'Hero Banners', icon: ImageIcon },
+
+    {
+      type: 'group',
+      id: 'deals_group',
+      label: 'Manage Deals',
+      icon: TagIcon,
+      children: [
+        { id: 'deals', label: 'Deals', icon: TagIcon },
+        { id: 'deal_requests', label: 'Deal Requests', icon: DealReqIcon },
+      ],
+    },
+
+    {
+      type: 'group',
+      id: 'tours_group',
+      label: 'Manage Tours',
+      icon: MapIcon,
+      children: [
+        { id: 'tours', label: 'Tours', icon: MapIcon },
+        { id: 'trip_requests', label: 'Tour Requests', icon: CalendarIcon },
+      ],
+    },
+
+    { type: 'item', id: 'gallery', label: 'Gallery', icon: CameraIcon },
+    { type: 'item', id: 'inquiries', label: 'Inquiries', icon: MailIcon },
   ];
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
-        } bg-slate-900 transition-all duration-300 flex flex-col`}
-      >
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-16'} bg-slate-900 transition-all duration-300 flex flex-col`}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
-          {sidebarOpen && (
-            <span className="text-lg font-semibold text-white">Admin Panel</span>
-          )}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-slate-800 text-gray-300"
-          >
+          {sidebarOpen && <span className="text-lg font-semibold text-white">Admin Panel</span>}
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-slate-800 text-gray-300">
             <MenuIcon />
           </button>
         </div>
 
-        <nav className="flex-1 py-4 px-2">
+        <nav className="flex-1 py-4 px-2 space-y-1">
           {menuItems.map((item) => {
             const IconComponent = item.icon;
+
+            if (item.type === 'item') {
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => go(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${view === item.id ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  type="button"
+                >
+                  <IconComponent />
+                  {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+                </button>
+              );
+            }
+
+            // group
+            const isOpen = !!openGroups[item.id];
+            const childActive = item.children.some((c) => c.id === view);
+
             return (
-              <button
-                key={item.id}
-                onClick={() => go(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded-lg transition-colors ${
-                  view === item.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <IconComponent />
-                {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
-              </button>
+              <div key={item.id} className="select-none">
+                <button
+                  onClick={() => toggleGroup(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${childActive ? 'bg-slate-800 text-white' : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                    }`}
+                  type="button"
+                >
+                  <IconComponent />
+                  {sidebarOpen && (
+                    <>
+                      <span className="text-sm font-medium flex-1 text-left">{item.label}</span>
+                      <span className="opacity-80">{isOpen ? <ChevronDown /> : <ChevronRight />}</span>
+                    </>
+                  )}
+                </button>
+
+                {sidebarOpen && isOpen && (
+                  <div className="mt-1 ml-3 pl-3 border-l border-slate-700 space-y-1">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      return (
+                        <button
+                          key={child.id}
+                          onClick={() => go(child.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${view === child.id
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-300 hover:bg-slate-800 hover:text-white'
+                            }`}
+                          type="button"
+                        >
+                          <ChildIcon />
+                          <span className="font-medium">{child.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
@@ -171,6 +273,7 @@ export default function AdminDashboard() {
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-slate-800 transition-colors"
+            type="button"
           >
             <LogoutIcon />
             {sidebarOpen && <span className="text-sm font-medium">Logout</span>}
@@ -182,7 +285,15 @@ export default function AdminDashboard() {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div>
             <h1 className="text-xl font-semibold text-gray-800">
-              {menuItems.find(item => item.id === view)?.label || 'Dashboard'}
+              {/* label finder supports nested labels */}
+              {(() => {
+                const flat = menuItems.flatMap((m) =>
+                  m.type === 'group'
+                    ? [{ id: m.id, label: m.label }, ...m.children.map((c) => ({ id: c.id, label: c.label }))]
+                    : [{ id: m.id, label: m.label }]
+                );
+                return flat.find((x) => x.id === view)?.label || 'Dashboard';
+              })()}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -220,6 +331,19 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <p className="text-3xl font-bold text-gray-900">{dealsCount ?? '—'}</p>
+              </div>
+
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                    <DealReqIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Deal Requests</h3>
+                    <p className="text-gray-500 text-sm">Pending requests</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">{dealRequestsCount ?? '—'}</p>
               </div>
 
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
@@ -266,7 +390,8 @@ export default function AdminDashboard() {
 
           {view === 'hero' && <HeroManager />}
           {view === 'deals' && <DealsManager />}
-          {view === 'tours' && <CollectionManager />}
+          {view === 'deal_requests' && <DealRequestsManager />}
+          {view === 'tours' && <TourManager />}
           {view === 'gallery' && <GalleryManager />}
           {view === 'inquiries' && <Inquiries />}
           {view === 'trip_requests' && <TripRequests />}

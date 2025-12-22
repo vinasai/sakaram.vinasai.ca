@@ -40,7 +40,7 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="relative py-20 overflow-hidden">
+    <section id="contact" className="relative py-44 overflow-hidden">
       <div className="absolute inset-0">
         <img
           src="https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=1920"
@@ -56,7 +56,7 @@ export default function Contact() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-12 animate-fade-in-down">
           <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full px-4 py-2 mb-4 shadow-lg">
-            <MessageCircle size={16} className="animate-pulse" />
+
             <span className="text-sm font-semibold">Contact Us</span>
           </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
@@ -79,7 +79,7 @@ export default function Contact() {
                 <h3 className="text-2xl font-bold text-gray-800 mb-1">Send us a Message</h3>
                 <p className="text-gray-600 text-sm">Fill out the form and we'll get back to you shortly</p>
               </div>
-              
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="transform transition-all duration-300 hover:translate-x-1">

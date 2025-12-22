@@ -17,7 +17,7 @@ export default function AboutSakaram() {
   return (
     <div className="min-h-screen">
       {/* Main Hero Section - Image Left, Content Right */}
-      <section className="relative min-h-screen flex items-center py-20 overflow-hidden">
+      <section className="relative min-h-screen flex items-center py-28 overflow-hidden scroll-mt-28">
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
@@ -29,8 +29,8 @@ export default function AboutSakaram() {
           <div className="absolute inset-0 bg-white/90"></div>
         </div>
 
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-7xl mx-auto">
+        <div className="container mx-auto px-4 relative z-10 py-20">
+          <div className="grid lg:grid-cols-2 gap-12  max-w-7xl mx-auto">
             {/* Left Side - Leopard Image */}
             <div className="relative">
               <div className="relative overflow-hidden rounded-3xl shadow-2xl">
@@ -41,7 +41,7 @@ export default function AboutSakaram() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
               </div>
-              
+
               {/* Decorative Element */}
               <div className="absolute -bottom-6 -right-6 bg-gradient-to-br from-emerald-500 to-teal-600 w-32 h-32 rounded-3xl -z-10 opacity-20"></div>
               <div className="absolute -top-6 -left-6 bg-gradient-to-br from-emerald-500 to-teal-600 w-24 h-24 rounded-3xl -z-10 opacity-20"></div>
@@ -51,7 +51,7 @@ export default function AboutSakaram() {
             <div className="space-y-8">
               {/* Handwritten Style Header */}
               <div>
-                <p className="text-emerald-600 font-['Brush_Script_MT',cursive] text-3xl mb-2">
+                <p className="text-emerald-600 font-['Brush_Script_MT',cursive] text-3xl mb-2 ">
                   Learn about us
                 </p>
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
@@ -74,22 +74,22 @@ export default function AboutSakaram() {
                     <CheckCircle size={20} className="text-emerald-600 mr-3 mt-1 flex-shrink-0" />
                     <p><span className="font-semibold text-gray-800">Tailor-made tour packages:</span> Designing customized itineraries to suit individual preferences, interests, and budgets. This might involve cultural tours, wildlife safaris, beach holidays, adventure activities, and more.</p>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <CheckCircle size={20} className="text-emerald-600 mr-3 mt-1 flex-shrink-0" />
                     <p><span className="font-semibold text-gray-800">Transportation:</span> Providing various transport options such as private vehicles with drivers, ensuring convenient and comfortable travel throughout the island.</p>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <CheckCircle size={20} className="text-emerald-600 mr-3 mt-1 flex-shrink-0" />
                     <p><span className="font-semibold text-gray-800">Accommodation arrangements:</span> Assisting with booking hotels, guesthouses, or other types of lodging based on the client's needs and preferences.</p>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <CheckCircle size={20} className="text-emerald-600 mr-3 mt-1 flex-shrink-0" />
                     <p><span className="font-semibold text-gray-800">Guided tours:</span> Employing knowledgeable local guides who can provide insights into Sri Lanka's history, culture, nature, and attractions.</p>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <CheckCircle size={20} className="text-emerald-600 mr-3 mt-1 flex-shrink-0" />
                     <p><span className="font-semibold text-gray-800">Activity bookings:</span> Arranging excursions and activities such as visiting historical sites, exploring national parks, engaging in water sports, and experiencing local traditions.</p>

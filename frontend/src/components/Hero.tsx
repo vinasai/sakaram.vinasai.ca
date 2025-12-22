@@ -62,13 +62,12 @@ export default function Hero() {
   };
 
   return (
-    <section id="home" className="relative h-screen w-full overflow-hidden">
+    <section id="home" className="relative h-screen w-full overflow-hidden py-20 scroll-mt-28">
       {images.map((img, index) => (
         <div
           key={index}
-          className={`absolute inset-0 transition-all duration-1000 ${
-            index === currentImage ? 'opacity-100 scale-100' : 'opacity-0 scale-110'
-          }`}
+          className={`absolute inset-0 transition-all duration-1000 ${index === currentImage ? 'opacity-100 scale-100' : 'opacity-0 scale-110'
+            }`}
         >
           <img
             src={img}
@@ -83,7 +82,7 @@ export default function Hero() {
       ))}
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute  left-10 w-72 h-64 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
@@ -102,7 +101,7 @@ export default function Hero() {
           </h1>
 
           <p className="text-lg md:text-2xl mb-10 text-gray-200 max-w-3xl mx-auto leading-relaxed" style={{ animationDelay: '0.4s' }}>
-            Embark on an unforgettable journey through ancient temples, pristine beaches, 
+            Embark on an unforgettable journey through ancient temples, pristine beaches,
             and lush tea plantations with <span className="font-semibold text-white">Sarkam Tours</span>
           </p>
 
@@ -122,15 +121,15 @@ export default function Hero() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button 
+            <button
               onClick={() => scrollToSection('tours')}
               className="group relative px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold rounded-full text-lg overflow-hidden transition-all transform hover:scale-105 shadow-2xl hover:shadow-emerald-500/50"
             >
               <span className="relative z-10">Explore Tours</span>
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
             </button>
-            
-            <button 
+
+            <button
               onClick={() => scrollToSection('contact')}
               className="px-8 py-4 bg-white/10 backdrop-blur-md border-2 border-white/30 text-white font-bold rounded-full text-lg transition-all transform hover:scale-105 hover:bg-white/20 hover:border-white/50"
             >
@@ -146,9 +145,8 @@ export default function Hero() {
             <button
               key={index}
               onClick={() => setCurrentImage(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                index === currentImage ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/75'
-              }`}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentImage ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/75'
+                }`}
             />
           ))}
         </div>

@@ -35,7 +35,7 @@ export default function Services() {
   ];
 
   return (
-    <section id="services" className="relative py-20 overflow-hidden">
+    <section id="services" className="relative py-44 overflow-hidden scroll-mt-28">
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
@@ -56,16 +56,16 @@ export default function Services() {
           {/* Section Header */}
           <div className="text-center mb-16">
             <div className="inline-flex items-center space-x-2 bg-emerald-50/80 backdrop-blur-sm text-emerald-700 rounded-full px-4 py-2 mb-4">
-              <Shield size={16} />
+
               <span className="text-sm font-semibold">What We Offer</span>
             </div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-4">
               Our <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Services</span>
             </h2>
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-16 h-1 bg-emerald-600 rounded-full"></div>
-              <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
-              <div className="w-8 h-1 bg-emerald-600 rounded-full"></div>
+              <div className="w-16 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent rounded-full"></div>
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+              <div className="w-16 h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent rounded-full"></div>
             </div>
             <p className="text-gray-700 text-lg max-w-2xl mx-auto font-medium">
               Comprehensive tourism solutions for an unforgettable Sri Lankan experience

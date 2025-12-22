@@ -21,6 +21,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Clear token and redirect to login if we receive a 401
+      localStorage.removeItem('admin_token');
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/admin/login')) {
+        window.location.href = '/admin/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 const toMediaUrl = (path?: string) => {
   if (!path) return '';
   if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('blob:')) return path;
@@ -32,7 +46,11 @@ const toFormData = (payload: Record<string, any>, file?: File | null, fieldName 
   const data = new FormData();
   Object.entries(payload).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
-    data.append(key, String(value));
+    if (Array.isArray(value)) {
+      value.forEach(item => data.append(key, String(item)));
+    } else {
+      data.append(key, String(value));
+    }
   });
   if (file) data.append(fieldName, file);
   return data;
@@ -271,4 +289,22 @@ export {
   fetchTripRequests,
   updateTripRequest,
   fetchDashboardStats,
+  createDealRequest,
+  fetchDealRequests,
+  updateDealRequestStatus,
+};
+
+const createDealRequest = async (payload: Record<string, any>) => {
+  const { data } = await api.post('/deal-requests', payload);
+  return data;
+};
+
+const fetchDealRequests = async (params?: Record<string, any>) => {
+  const { data } = await api.get('/deal-requests', { params });
+  return data as any[];
+};
+
+const updateDealRequestStatus = async (id: string, status: string) => {
+  const { data } = await api.put(`/deal-requests/${id}/status`, { status });
+  return data;
 };
