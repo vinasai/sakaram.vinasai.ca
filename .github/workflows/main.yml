@@ -53,7 +53,7 @@ jobs:
             echo "Writing frontend .env..."
             cat > ".env" <<'ENVEOF'
             '"$FRONTEND_ENV"'
-            ENVEOF
+             ENVEOF
             
             yarn run build
 
@@ -86,7 +86,7 @@ jobs:
             echo "Writing backend .env..."
             cat > ".env" <<'ENVEOF'
             '"$BACKEND_ENV"'
-            ENVEOF
+             ENVEOF
 
             pm2 describe sakaram.vinasai.ca-backend >/dev/null 2>&1 && pm2 restart sakaram.vinasai.ca-backend --update-env || pm2 start npm --name sakaram.vinasai.ca-backend -- start
             pm2 save
