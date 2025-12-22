@@ -1,4 +1,4 @@
-name: sakaram deploy
+name: sakaram.vinasai.ca deploy
 on:
   push:
     branches:
@@ -6,6 +6,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: env
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,7 +19,7 @@ jobs:
       - name: Deploy to Server
         run: |
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}' bash -s" << 'EOF'
+          "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}/frontend' BACKEND_DIR='${{ secrets.WORK_DIR }}/backend' FRONTEND_ENV='${{ vars.FRONTEND_ENV }}' BACKEND_ENV='${{ vars.BACKEND_ENV }}' bash -s" << 'EOF'
             set -e
 
             # Define REPO_URL inside the remote script
@@ -48,6 +49,12 @@ jobs:
             
             yarn install --production=false
             echo "Building the application..."
+
+            echo "Writing frontend .env..."
+            cat > ".env" <<'ENVEOF'
+            '"$FRONTEND_ENV"'
+            ENVEOF
+            
             yarn run build
 
             if [ -d "build" ]; then
@@ -70,5 +77,21 @@ jobs:
                       
             echo "Restarting Nginx..."
             sudo systemctl restart nginx
+
+            cd "$BACKEND_DIR"
+            
+            yarn install --production=false
+            echo "Building the application..."
+
+            echo "Writing backend .env..."
+            cat > ".env" <<'ENVEOF'
+            '"$BACKEND_ENV"'
+            ENVEOF
+
+            pm2 describe sakaram.vinasai.ca-backend >/dev/null 2>&1 && pm2 restart sakaram.vinasai.ca-backend --update-env || pm2 start npm --name sakaram.vinasai.ca-backend -- start
+            pm2 save
+
+            # rm -f .env .env.production
+            
             echo "--- Deployment Finished Successfully ---"
           EOF
