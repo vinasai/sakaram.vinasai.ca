@@ -5,7 +5,6 @@ import LoadingState from '../components/LoadingState';
 type Deal = {
   id: string;
   title: string;
-  description?: string;
   tagline?: string;
   duration?: string;
   inclusions?: string[];
@@ -19,7 +18,6 @@ type Deal = {
 
 type FormState = {
   title: string;
-  description: string;
   tagline: string;
   duration: string;
   inclusions: string;
@@ -97,7 +95,6 @@ export default function DealsManager() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     title: '',
-    description: '',
     tagline: '',
     duration: '',
     inclusions: '',
@@ -124,7 +121,6 @@ export default function DealsManager() {
       const mapped = (res.items || []).map((deal: any) => ({
         id: deal._id,
         title: deal.title,
-        description: deal.description,
         tagline: deal.tagline,
         duration: deal.duration,
         inclusions: deal.inclusions || [],
@@ -153,7 +149,6 @@ export default function DealsManager() {
     setEditing(null);
     setForm({
       title: '',
-      description: '',
       tagline: '',
       duration: '',
       inclusions: '',
@@ -178,7 +173,6 @@ export default function DealsManager() {
     try {
       const newDeal = await createDeal({
         title: form.title,
-        description: form.description,
         tagline: form.tagline,
         duration: form.duration,
         inclusions: form.inclusions.split(',').map(i => i.trim()).filter(Boolean),
@@ -189,9 +183,21 @@ export default function DealsManager() {
         isActive: form.isActive,
       }, form.imageFile);
 
-      // Navigate to public page and highlight
-      window.location.href = `/?highlightDeal=${newDeal._id}#deals`;
-      return;
+      await loadDeals();
+      setForm({
+        title: '',
+        tagline: '',
+        duration: '',
+        inclusions: '',
+        price: '',
+        discount: '',
+        spotsLeft: '',
+        expiryDate: '',
+        isActive: true,
+        imageFile: null,
+        imagePreview: ''
+      });
+      setShowModal(false);
     } catch (err: any) {
       console.error('Failed to create deal', err);
       let errorMessage = 'Unable to create deal. Please check your inputs.';
@@ -210,7 +216,6 @@ export default function DealsManager() {
     setEditing(d);
     setForm({
       title: d.title,
-      description: d.description || '',
       tagline: d.tagline || '',
       duration: d.duration || '',
       inclusions: (d.inclusions || []).join(', '),
@@ -232,7 +237,6 @@ export default function DealsManager() {
     try {
       await updateDeal(editing.id, {
         title: form.title,
-        description: form.description,
         tagline: form.tagline,
         duration: form.duration,
         inclusions: form.inclusions.split(',').map(i => i.trim()).filter(Boolean),
@@ -262,7 +266,7 @@ export default function DealsManager() {
   const closeModal = () => {
     setShowModal(false);
     setEditing(null);
-    setForm({ title: '', description: '', tagline: '', duration: '', inclusions: '', price: '', discount: '', spotsLeft: '', expiryDate: '', isActive: true, imageFile: null, imagePreview: '' });
+    setForm({ title: '', tagline: '', duration: '', inclusions: '', price: '', discount: '', spotsLeft: '', expiryDate: '', isActive: true, imageFile: null, imagePreview: '' });
   };
 
   const remove = async (id: string) => {
@@ -335,9 +339,6 @@ export default function DealsManager() {
                   )}
                 </div>
                 {i.tagline && <p className="text-xs text-blue-600 font-medium mb-1">{i.tagline}</p>}
-                {i.description && (
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">{i.description}</p>
-                )}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   <button
                     onClick={() => startEdit(i)}
@@ -398,28 +399,21 @@ export default function DealsManager() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Tagline (location or short text) <span className="text-red-500">*</span>
+                    <span className={`ml-2 text-xs ${form.tagline.length > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+                      {form.tagline.length}/80
+                    </span>
                   </label>
                   <input
                     value={form.tagline}
-                    onChange={e => setForm({ ...form, tagline: e.target.value })}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 80) {
+                        setForm({ ...form, tagline: e.target.value });
+                      }
+                    }}
                     required
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                     placeholder="e.g., Mirissa & Unawatuna"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Description <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={form.description}
-                    onChange={e => setForm({ ...form, description: e.target.value })}
-                    required
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                    placeholder="Describe the deal"
-                    rows={3}
-                  ></textarea>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -441,7 +435,7 @@ export default function DealsManager() {
                     </label>
                     <input
                       value={form.price}
-                      onChange={e => setForm({ ...form, price: e.target.value })}
+                      onChange={e => setForm({ ...form, price: e.target.value.replace(/\D/g, '') })}
                       required
                       className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                       placeholder="e.g., 299"
@@ -501,6 +495,7 @@ export default function DealsManager() {
                       required
                       className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                       type="date"
+                      min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
                     />
                   </div>
                   <div className="flex items-end">

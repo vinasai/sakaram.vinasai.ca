@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import { createTripRequest, fetchTourDetails, toMediaUrl } from '../api/client';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Star, Check, X, Calendar, Info, Users, ShieldCheck } from 'lucide-react';
@@ -127,7 +128,7 @@ export default function ExploreTour() {
       <Header />
 
       {/* --- HERO SECTION: Immersive full width --- */}
-      <div className="relative w-full h-[65vh] md:h-[75vh] bg-gray-900 mt-16 md:mt-0">
+      <div className="relative w-full h-[65vh] md:h-[75vh] bg-gray-900 mt-16 md:mt-10">
         <div className="absolute inset-0">
           {mainPhoto ? (
             <img src={mainPhoto} alt={tour.name} className="w-full h-full object-cover opacity-90" />
@@ -141,7 +142,7 @@ export default function ExploreTour() {
         {/* Back Button (Floating) */}
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-24 left-4 md:left-8 z-20 p-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full hover:bg-white hover:text-gray-900 transition-all"
+          className="absolute top-24 left-4 md:left-16 z-20 p-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full hover:bg-white hover:text-gray-900 transition-all"
         >
           <ArrowLeft size={20} />
         </button>
@@ -397,6 +398,7 @@ export default function ExploreTour() {
           onClose={() => setStatusModal(null)}
         />
       )}
+      <Footer />
     </>
   );
 }
@@ -535,6 +537,8 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
           </button>
         </form>
       </div>
+
     </div>
+
   );
 }

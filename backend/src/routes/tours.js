@@ -59,6 +59,7 @@ router.post(
     body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
     body("description").trim().notEmpty().withMessage("Description is required"),
+    body("tagline").trim().notEmpty().withMessage("Tagline is required").isLength({ max: 80 }).withMessage("Tagline must be less than 80 characters"),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -75,6 +76,7 @@ router.post(
       reviewsCount: req.body.reviewsCount || 0,
       isHotDeal: req.body.isHotDeal || false,
       description: req.body.description,
+      tagline: req.body.tagline,
     });
 
     return res.status(201).json(tour);
@@ -93,6 +95,7 @@ router.put(
     body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
     body("description").optional().trim().notEmpty().withMessage("Description cannot be empty"),
+    body("tagline").optional().trim().notEmpty().withMessage("Tagline cannot be empty").isLength({ max: 80 }).withMessage("Tagline must be less than 80 characters"),
   ],
   async (req, res) => {
     const errors = validationResult(req);

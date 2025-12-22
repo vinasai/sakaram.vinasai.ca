@@ -21,6 +21,7 @@ type Tour = {
   name: string;
   location?: string;
   price?: string;
+  tagline?: string;
   description?: string;
   image?: string;
   duration?: string;
@@ -194,11 +195,12 @@ export default function TourManager() {
   const [editing, setEditing] = useState<Tour | null>(null);
   const [editingDetails, setEditingDetails] = useState<TourDetails | null>(null);
   const [showModal, setShowModal] = useState(false);
-
+  const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',
     location: '',
     price: '',
+    tagline: '',
     description: '',
     image: '',
     duration: '',
@@ -282,6 +284,7 @@ export default function TourManager() {
         name: tour.name,
         location: tour.location,
         price: tour.price ? `$${tour.price}` : '',
+        tagline: tour.tagline || '',
         description: tour.description,
         image: tour.imageUrl ? toMediaUrl(tour.imageUrl) : '',
         duration: tour.duration ? String(tour.duration) : '',
@@ -433,6 +436,7 @@ export default function TourManager() {
       name: '',
       location: '',
       price: '',
+      tagline: '',
       description: '',
       image: '',
       duration: '',
@@ -467,6 +471,7 @@ export default function TourManager() {
     if (!form.location.trim()) missingFields.push('Location');
     if (!form.price || Number(form.price) <= 0) missingFields.push('Price');
     if (!form.duration || Number.parseInt(form.duration, 10) <= 0) missingFields.push('Duration');
+    if (!form.tagline.trim()) missingFields.push('Tagline');
     if (!form.description.trim()) missingFields.push('Description');
 
     const totalPhotos = photoFiles.length + photoUrls.length;
@@ -478,8 +483,9 @@ export default function TourManager() {
       return;
     }
 
-    const safeRating = Math.min(Math.max(form.rating ? parseFloat(form.rating) : 0, 0), 5);
+    const safeRating = Math.min(Math.max(form.rating ? parseFloat(form.rating) : 0, 0), 4.9);
 
+    setIsSaving(true);
     try {
       const created = await createTour({
         name: form.name,
@@ -489,6 +495,7 @@ export default function TourManager() {
         rating: safeRating,
         reviewsCount: form.reviews ? Number(form.reviews) : 0,
         isHotDeal: !!form.popular,
+        tagline: form.tagline,
         description: form.description,
       });
 
@@ -531,6 +538,7 @@ export default function TourManager() {
         name: '',
         location: '',
         price: '',
+        tagline: '',
         description: '',
         image: '',
         duration: '',
@@ -570,6 +578,8 @@ export default function TourManager() {
 
       setFormError('');
       setErrorModalMessage(friendly);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -588,6 +598,7 @@ export default function TourManager() {
         name: detail.tour.name,
         location: detail.tour.location || '',
         price: detail.tour.price ? String(detail.tour.price) : priceValue,
+        tagline: detail.tour.tagline || '',
         description: detail.tour.description || '',
         image: '',
         duration: detail.tour.duration ? String(detail.tour.duration) : '',
@@ -633,6 +644,7 @@ export default function TourManager() {
         name: t.name,
         location: t.location || '',
         price: priceValue,
+        tagline: t.tagline || '',
         description: t.description || '',
         image: t.image || '',
         duration: t.duration || '',
@@ -666,6 +678,7 @@ export default function TourManager() {
     if (!form.location.trim()) missingFields.push('Location');
     if (!form.price || Number(form.price) <= 0) missingFields.push('Price');
     if (!form.duration || Number.parseInt(form.duration, 10) <= 0) missingFields.push('Duration');
+    if (!form.tagline.trim()) missingFields.push('Tagline');
     if (!form.description.trim()) missingFields.push('Description');
 
     const totalPhotos = photoFiles.length + photoUrls.length;
@@ -677,9 +690,10 @@ export default function TourManager() {
       return;
     }
 
-    const safeRating = Math.min(Math.max(form.rating ? parseFloat(form.rating) : 0, 0), 5);
+    const safeRating = Math.min(Math.max(form.rating ? parseFloat(form.rating) : 0, 0), 4.9);
 
     try {
+      setIsSaving(true);
       await updateTour(editing.id, {
         name: form.name,
         location: form.location,
@@ -688,6 +702,7 @@ export default function TourManager() {
         rating: safeRating,
         reviewsCount: form.reviews ? Number(form.reviews) : 0,
         isHotDeal: !!form.popular,
+        tagline: form.tagline,
         description: form.description,
       });
 
@@ -736,6 +751,7 @@ export default function TourManager() {
         name: '',
         location: '',
         price: '',
+        tagline: '',
         description: '',
         image: '',
         duration: '',
@@ -775,6 +791,8 @@ export default function TourManager() {
 
       setFormError('');
       setErrorModalMessage(friendly);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -791,6 +809,7 @@ export default function TourManager() {
       name: '',
       location: '',
       price: '',
+      tagline: '',
       description: '',
       image: '',
       duration: '',
@@ -1048,13 +1067,18 @@ export default function TourManager() {
                         </div>
                         <input
                           value={form.rating}
-                          onChange={(e) => setForm({ ...form, rating: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || (Number(val) >= 0 && Number(val) <= 4.9)) {
+                              setForm({ ...form, rating: val });
+                            }
+                          }}
                           className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="4.9"
                           type="number"
                           step="0.1"
                           min="0"
-                          max="5"
+                          max="4.9"
                         />
                       </div>
                     </div>
@@ -1082,6 +1106,25 @@ export default function TourManager() {
                         />
                       </div>
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Tagline <span className="text-red-500">*</span>
+                      <span className={`ml-2 text-xs ${form.tagline.length > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+                        {form.tagline.length}/80
+                      </span>
+                    </label>
+                    <input
+                      value={form.tagline}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 80) {
+                          setForm({ ...form, tagline: e.target.value });
+                        }
+                      }}
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Short catchy phrase (max 80 chars)"
+                      required
+                    />
                   </div>
 
                   <div>
@@ -1507,16 +1550,21 @@ export default function TourManager() {
               {/* Submit triggers form onSubmit */}
               <button
                 type="submit"
-                form="" // not needed, but safe if form nesting changes
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl"
+                disabled={isSaving}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 onClick={() => {
-                  // If you keep form submit only, you can remove this onClick entirely.
-                  // This exists only to keep behavior stable if browsers differ.
+                  if (isSaving) return;
                   const formEl = document.querySelector('form');
                   if (formEl) (formEl as HTMLFormElement).requestSubmit?.();
                 }}
               >
-                {editing ? 'Save Changes' : 'Create Tour'}
+                {isSaving && (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Tour'}
               </button>
             </div>
           </div>
