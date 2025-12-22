@@ -1,4 +1,4 @@
-import { Tag, Clock, Users, Sparkles, ArrowRight, Calendar, Star, Gift, TicketPercent } from 'lucide-react';
+import { Tag, Clock, Users, Sparkles, ArrowRight, Calendar, Star, TicketPercent } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { fetchDeals, toMediaUrl } from '../api/client';
 import LoadingState from './LoadingState';
@@ -44,12 +44,11 @@ export default function Deals() {
             // displayDiscount: Math.round((deal.discount / deal.price) * 100)}%
 
             const original = Number(deal.price);
-            const discAmount = Number(deal.discount);
-            const final = original - discAmount;
-            discountedPrice = final;
-
-            if (original > 0) {
-              discountPercent = `${Math.round((discAmount / original) * 100)}%`;
+            const discountPercentVal = Number(deal.discount);
+            if (original > 0 && discountPercentVal > 0) {
+              const discountAmount = (original * discountPercentVal) / 100;
+              discountedPrice = Math.round(original - discountAmount);
+              discountPercent = `${discountPercentVal}%`;
             }
           }
 

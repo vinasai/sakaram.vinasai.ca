@@ -458,15 +458,21 @@ export default function DealsManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Discount (number)
+                      Discount (%)
                     </label>
                     <input
                       value={form.discount}
-                      onChange={e => setForm({ ...form, discount: e.target.value })}
+                      onChange={(e) => {
+                        let val = Number(e.target.value);
+                        if (val < 0) val = 0;
+                        if (val > 100) val = 100;
+                        setForm({ ...form, discount: e.target.value === '' ? '' : String(val) });
+                      }}
                       className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                       placeholder="e.g., 10"
                       type="number"
                       min="0"
+                      max="100"
                     />
                   </div>
                   <div>
