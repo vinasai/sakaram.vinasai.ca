@@ -23,19 +23,19 @@ app.use(morgan("dev"));
 
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/auth", authRoutes);
-app.use("/hero-banners", heroBannerRoutes);
-app.use("/deals", dealRoutes);
-app.use("/tours", tourRoutes);
-app.use("/gallery", galleryRoutes);
-app.use("/inquiries", inquiryRoutes);
-app.use("/trip-requests", tripRequestRoutes);
-app.use("/dashboard", dashboardRoutes);
-app.use("/deal-requests", dealRequestRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/hero-banners", heroBannerRoutes);
+app.use("/api/deals", dealRoutes);
+app.use("/api/tours", tourRoutes);
+app.use("/api/gallery", galleryRoutes);
+app.use("/api/inquiries", inquiryRoutes);
+app.use("/api/trip-requests", tripRequestRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/deal-requests", dealRequestRoutes);
 
 app.use((err, req, res, next) => {
   if (err.message?.includes("Only image uploads")) {
