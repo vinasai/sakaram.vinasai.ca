@@ -18,8 +18,13 @@ jobs:
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       - name: Deploy to Server
         run: |
+          set -e
+
+          FRONTEND_ENV_B64="$(printf '%s' "${{ vars.FRONTEND_ENV }}" | base64 -w0)"
+          BACKEND_ENV_B64="$(printf '%s' "${{ vars.BACKEND_ENV }}" | base64 -w0)"
+          
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}/frontend' BACKEND_DIR='${{ secrets.WORK_DIR }}/backend' FRONTEND_ENV='${{ vars.FRONTEND_ENV }}' BACKEND_ENV='${{ vars.BACKEND_ENV }}' bash -s" << 'EOF'
+          "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}/frontend' BACKEND_DIR='${{ secrets.WORK_DIR }}/backend' FRONTEND_ENV_B64='$FRONTEND_ENV_B64' BACKEND_ENV_B64='$BACKEND_ENV_B64' bash -s" << 'EOF'
             set -e
 
             # Define REPO_URL inside the remote script
@@ -51,9 +56,8 @@ jobs:
             echo "Building the application..."
 
             echo "Writing frontend .env..."
-            cat > ".env" <<'ENVEOF'
-            '"$FRONTEND_ENV"'
-             ENVEOF
+            echo "$FRONTEND_ENV_B64" | base64 -d > .env
+            chmod 600 .env
             
             yarn run build
 
@@ -84,9 +88,8 @@ jobs:
             echo "Building the application..."
 
             echo "Writing backend .env..."
-            cat > ".env" <<'ENVEOF'
-            '"$BACKEND_ENV"'
-             ENVEOF
+            echo "$BACKEND_ENV_B64" | base64 -d > .env
+            chmod 600 .env
 
             pm2 describe sakaram.vinasai.ca-backend >/dev/null 2>&1 && pm2 restart sakaram.vinasai.ca-backend --update-env || pm2 start npm --name sakaram.vinasai.ca-backend -- start
             pm2 save
