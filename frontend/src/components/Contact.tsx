@@ -1,0 +1,250 @@
+import { Mail, Phone, Send, MessageCircle, MapPin, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { createInquiry } from '../api/client';
+
+export default function Contact() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    countryCode: '+94',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await createInquiry({
+        fullName: formData.name,
+        email: formData.email,
+        phone: `${formData.countryCode} ${formData.phone}`.trim(),
+        message: formData.message,
+      });
+      setFormData({ name: '', email: '', phone: '', countryCode: '+94', message: '' });
+      alert('Message sent — thank you!');
+    } catch (err) {
+      console.error('Failed to send inquiry', err);
+      alert('Unable to send message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  return (
+    <section id="contact" className="relative py-44 overflow-hidden">
+      <div className="absolute inset-0">
+        <img
+          src="https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=1920"
+          alt="Sri Lanka nature background"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/70 to-black/75"></div>
+      </div>
+
+      <div className="absolute top-20 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-20 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="text-center mb-12 animate-fade-in-down">
+          <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full px-4 py-2 mb-4 shadow-lg">
+
+            <span className="text-sm font-semibold">Contact Us</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
+            Let's Start Your <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">Adventure</span>
+          </h2>
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="w-16 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent rounded-full"></div>
+            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            <div className="w-16 h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent rounded-full"></div>
+          </div>
+          <p className="text-gray-200 text-base max-w-xl mx-auto leading-relaxed">
+            Ready to explore the Pearl of the Indian Ocean? Get in touch with us and let's plan your perfect journey together!
+          </p>
+        </div>
+
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8 animate-fade-in-up">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 border border-white/50 transform hover:scale-[1.01] transition-all duration-500">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-800 mb-1">Send us a Message</h3>
+                <p className="text-gray-600 text-sm">Fill out the form and we'll get back to you shortly</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="transform transition-all duration-300 hover:translate-x-1">
+                    <label htmlFor="name" className="block text-gray-700 font-semibold mb-1.5 text-sm">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
+                      placeholder="John Doe"
+                    />
+                  </div>
+
+                  <div className="transform transition-all duration-300 hover:translate-x-1">
+                    <label htmlFor="email" className="block text-gray-700 font-semibold mb-1.5 text-sm">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="transform transition-all duration-300 hover:translate-x-1">
+                  <label htmlFor="phone" className="block text-gray-700 font-semibold mb-1.5 text-sm">
+                    Phone Number *
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={formData.countryCode}
+                      onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                      className="w-32 px-2 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
+                    >
+                      <option value="+93">🇦🇫 +93</option>
+                      <option value="+355">🇦🇱 +355</option>
+                      <option value="+213">🇩🇿 +213</option>
+                      <option value="+1">🇺🇸 +1</option>
+                      <option value="+61">🇦🇺 +61</option>
+                      <option value="+43">🇦🇹 +43</option>
+                      <option value="+880">🇧🇩 +880</option>
+                      <option value="+32">🇧🇪 +32</option>
+                      <option value="+55">🇧🇷 +55</option>
+                      <option value="+1">🇨🇦 +1</option>
+                      <option value="+86">🇨🇳 +86</option>
+                      <option value="+45">🇩🇰 +45</option>
+                      <option value="+20">🇪🇬 +20</option>
+                      <option value="+358">🇫🇮 +358</option>
+                      <option value="+33">🇫🇷 +33</option>
+                      <option value="+49">🇩🇪 +49</option>
+                      <option value="+30">🇬🇷 +30</option>
+                      <option value="+852">🇭🇰 +852</option>
+                      <option value="+91">🇮🇳 +91</option>
+                      <option value="+62">🇮🇩 +62</option>
+                      <option value="+98">🇮🇷 +98</option>
+                      <option value="+964">🇮🇶 +964</option>
+                      <option value="+353">🇮🇪 +353</option>
+                      <option value="+972">🇮🇱 +972</option>
+                      <option value="+39">🇮🇹 +39</option>
+                      <option value="+81">🇯🇵 +81</option>
+                      <option value="+82">🇰🇷 +82</option>
+                      <option value="+60">🇲🇾 +60</option>
+                      <option value="+52">🇲🇽 +52</option>
+                      <option value="+31">🇳🇱 +31</option>
+                      <option value="+64">🇳🇿 +64</option>
+                      <option value="+47">🇳🇴 +47</option>
+                      <option value="+92">🇵🇰 +92</option>
+                      <option value="+63">🇵🇭 +63</option>
+                      <option value="+48">🇵🇱 +48</option>
+                      <option value="+351">🇵🇹 +351</option>
+                      <option value="+974">🇶🇦 +974</option>
+                      <option value="+7">🇷🇺 +7</option>
+                      <option value="+966">🇸🇦 +966</option>
+                      <option value="+65">🇸🇬 +65</option>
+                      <option value="+27">🇿🇦 +27</option>
+                      <option value="+34">🇪🇸 +34</option>
+                      <option value="+94">🇱🇰 +94</option>
+                      <option value="+46">🇸🇪 +46</option>
+                      <option value="+41">🇨🇭 +41</option>
+                      <option value="+886">🇹🇼 +886</option>
+                      <option value="+66">🇹🇭 +66</option>
+                      <option value="+90">🇹🇷 +90</option>
+                      <option value="+971">🇦🇪 +971</option>
+                      <option value="+44">🇬🇧 +44</option>
+                      <option value="+84">🇻🇳 +84</option>
+                    </select>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      required
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="flex-1 px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
+                      placeholder="76 046 5855"
+                    />
+                  </div>
+                </div>
+
+                <div className="transform transition-all duration-300 hover:translate-x-1">
+                  <label htmlFor="message" className="block text-gray-700 font-semibold mb-1.5 text-sm">
+                    Your Message *
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    required
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    rows={4}
+                    className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
+                    placeholder="Tell us about your dream trip..."
+                  ></textarea>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full mt-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-3 rounded-xl font-bold text-base hover:from-emerald-700 hover:to-teal-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg transform hover:scale-[1.02] disabled:opacity-70"
+                >
+                  <Send size={18} />
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <Phone size={20} className="text-emerald-600" />
+              </div>
+              <h4 className="text-base font-bold text-gray-800 mb-1">Call Us</h4>
+              <p className="text-gray-600 text-sm">+94 76 046 5855</p>
+            </div>
+
+            <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <Mail size={20} className="text-emerald-600" />
+              </div>
+              <h4 className="text-base font-bold text-gray-800 mb-1">Email Us</h4>
+              <p className="text-gray-600 text-sm">info@sarkamtours.com</p>
+            </div>
+
+            <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-3">
+                <Clock size={20} className="text-emerald-600" />
+              </div>
+              <h4 className="text-base font-bold text-gray-800 mb-1">Working Hours</h4>
+              <p className="text-gray-600 text-sm">Mon - Sat: 9AM - 6PM</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
