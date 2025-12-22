@@ -52,7 +52,7 @@ jobs:
             echo "Deploying frontend..."
             cd "$FRONTEND_DIR"
             
-            yarn install --production=false
+            yarn install --production=true
             echo "Building the application..."
 
             echo "Writing frontend .env..."
