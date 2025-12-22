@@ -56,7 +56,7 @@ export default function Deals() {
           return {
             id: deal._id,
             title: deal.title,
-            subtitle: deal.tagline || deal.description || '', // Map tagline to subtitle as per design intent
+            subtitle: deal.tagline || '', // Map tagline to subtitle as per design intent
             originalPrice: deal.price ? `$${deal.price}` : '',
             discountedPrice: `$${discountedPrice}`,
             discount: discountPercent,

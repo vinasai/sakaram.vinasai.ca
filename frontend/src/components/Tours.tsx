@@ -9,6 +9,7 @@ type TourItem = {
   name: string;
   location: string;
   price: number | string;
+  tagline: string;
   description: string;
   duration: number | string;
   rating?: number;
@@ -34,6 +35,7 @@ export default function Tours() {
           name: tour.name,
           location: tour.location,
           price: tour.price,
+          tagline: tour.tagline || '',
           description: tour.description,
           duration: tour.duration,
           rating: tour.rating,
@@ -120,7 +122,7 @@ export default function Tours() {
             icon={Globe}
           />
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto items-start">
             {tours.map((tour, index) => (
               <div
                 key={tour.id}
@@ -197,7 +199,7 @@ export default function Tours() {
                       <h3 className="text-xl font-bold text-gray-800 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-emerald-600 group-hover:to-teal-600 transition-all duration-500">
                         {tour.name}
                       </h3>
-                      <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">{tour.description}</p>
+                      <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">{tour.tagline}</p>
                     </div>
 
                     {/* Info Row with Icons */}

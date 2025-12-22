@@ -35,10 +35,9 @@ router.post(
   upload.single("image"),
   [
     body("title").trim().notEmpty().withMessage("Title is required"),
-    body("description").trim().notEmpty().withMessage("Description is required"),
     body("tagline").trim().notEmpty().withMessage("Tagline is required"),
     body("duration").trim().notEmpty().withMessage("Duration is required"),
-    body("inclusions").optional().isArray(),
+    body("inclusions").toArray().optional().isArray(),
     body("price").isFloat({ min: 0 }).withMessage("Price is required"),
     body("discount").optional().isFloat({ min: 0 }),
     body("spotsLeft").optional().isInt({ min: 0 }),
@@ -57,7 +56,6 @@ router.post(
 
     const deal = await Deal.create({
       title: req.body.title,
-      description: req.body.description,
       tagline: req.body.tagline,
       duration: req.body.duration,
       inclusions: req.body.inclusions,
@@ -79,10 +77,9 @@ router.put(
   upload.single("image"),
   [
     body("title").optional().trim().notEmpty(),
-    body("description").optional().trim().notEmpty(),
     body("tagline").optional().trim(),
     body("duration").optional().trim(),
-    body("inclusions").optional().isArray(),
+    body("inclusions").toArray().optional().isArray(),
     body("price").optional().isFloat({ min: 0 }),
     body("discount").optional().isFloat({ min: 0 }),
     body("spotsLeft").optional().isInt({ min: 0 }),
