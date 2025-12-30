@@ -555,7 +555,7 @@ export default function DealsManager() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Price <span className="text-red-500">*</span>
+                      Price (USD) <span className="text-red-500">*</span>
                     </label>
                     <input
                       value={form.price}
