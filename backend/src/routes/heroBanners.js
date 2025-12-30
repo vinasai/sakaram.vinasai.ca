@@ -7,6 +7,35 @@ const getPagination = require("../utils/pagination");
 
 const router = express.Router();
 
+// Custom validation functions
+const validateTitle = (value) => {
+  if (!value) return true; // Let required validator handle empty values
+  
+  // Check character restrictions (letters, numbers, spaces only)
+  const allowedCharsRegex = /^[a-zA-Z0-9\s]+$/;
+  if (!allowedCharsRegex.test(value)) {
+    throw new Error('Title can only contain letters, numbers, and spaces');
+  }
+  
+  // Check character count (max 80 characters)
+  if (value.length > 80) {
+    throw new Error(`Title cannot exceed 80 characters. Current: ${value.length} characters`);
+  }
+  
+  return true;
+};
+
+const validateSubtitle = (value) => {
+  if (!value) return true; // Subtitle is optional
+  
+  // Check character count (max 80 characters)
+  if (value.length > 80) {
+    throw new Error(`Subtitle cannot exceed 80 characters. Current: ${value.length} characters`);
+  }
+  
+  return true;
+};
+
 router.get("/", async (req, res) => {
   const { includeInactive } = req.query;
   const filter = includeInactive === "true" ? {} : { isActive: true };
@@ -24,8 +53,14 @@ router.post(
   requireAuth,
   upload.single("image"),
   [
-    body("title").trim().notEmpty().withMessage("Title is required"),
-    body("subtitle").trim().notEmpty().withMessage("Subtitle is required"),
+    body("title")
+      .trim()
+      .notEmpty()
+      .withMessage("Title is required")
+      .custom(validateTitle),
+    body("subtitle")
+      .optional()
+      .custom(validateSubtitle),
     body("order").optional().isInt({ min: 0 }).withMessage("Order must be a number"),
   ],
   async (req, res) => {
@@ -55,8 +90,14 @@ router.put(
   requireAuth,
   upload.single("image"),
   [
-    body("title").optional().trim().notEmpty(),
-    body("subtitle").optional().trim().notEmpty(),
+    body("title")
+      .optional()
+      .trim()
+      .notEmpty()
+      .custom(validateTitle),
+    body("subtitle")
+      .optional()
+      .custom(validateSubtitle),
     body("order").optional().isInt({ min: 0 }),
     body("isActive").optional().isBoolean(),
   ],

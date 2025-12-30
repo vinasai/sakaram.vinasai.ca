@@ -20,7 +20,7 @@ type FormState = {
   title: string;
   tagline: string;
   duration: string;
-  inclusions: string;
+  inclusions: string[];
   price: string;
   discount: string;
   spotsLeft: string;
@@ -66,6 +66,12 @@ const ImageIcon = () => (
   </svg>
 );
 
+const UploadIcon = () => (
+  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2m-4-6l-4-4m0 0l-4 4m4-4v12" />
+  </svg>
+);
+
 // New Error Modal Component
 const ErrorModal = ({ message, onClose }: { message: string, onClose: () => void }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
@@ -97,7 +103,7 @@ export default function DealsManager() {
     title: '',
     tagline: '',
     duration: '',
-    inclusions: '',
+    inclusions: [],
     price: '',
     discount: '',
     spotsLeft: '',
@@ -107,12 +113,53 @@ export default function DealsManager() {
     imagePreview: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [inclusionInput, setInclusionInput] = useState('');
+
+  const durationPattern = /^[1-9]\d*\s*(Day|Days|Night|Nights)(\s+[1-9]\d*\s*(Day|Days|Night|Nights))?$/i;
+
+  const isValidDuration = (value: string) => durationPattern.test(value.trim());
+
+  const cleanupPreview = (url: string) => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const addInclusion = () => {
+    const value = inclusionInput.trim();
+    if (!value) return;
+    if (form.inclusions.includes(value)) {
+      setError('Inclusion already added.');
+      return;
+    }
+    setForm((prev) => ({ ...prev, inclusions: [...prev.inclusions, value] }));
+    setInclusionInput('');
+  };
+
+  const removeInclusion = (index: number) => {
+    setForm((prev) => ({ ...prev, inclusions: prev.inclusions.filter((_, i) => i !== index) }));
+  };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setError('Invalid file type. Please upload JPG, PNG, WEBP, or GIF.');
+      e.target.value = '';
+      return;
+    }
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError('File too large. Maximum size is 10MB.');
+      e.target.value = '';
+      return;
+    }
+
+    cleanupPreview(form.imagePreview);
     const preview = URL.createObjectURL(file);
     setForm((prev) => ({ ...prev, imageFile: file, imagePreview: preview }));
+    e.target.value = '';
   };
 
   const loadDeals = async () => {
@@ -147,11 +194,12 @@ export default function DealsManager() {
 
   const openAddModal = () => {
     setEditing(null);
+    cleanupPreview(form.imagePreview);
     setForm({
       title: '',
       tagline: '',
       duration: '',
-      inclusions: '',
+      inclusions: [],
       price: '',
       discount: '',
       spotsLeft: '',
@@ -160,6 +208,7 @@ export default function DealsManager() {
       imageFile: null,
       imagePreview: ''
     });
+    setInclusionInput('');
     setShowModal(true);
   };
 
@@ -169,16 +218,45 @@ export default function DealsManager() {
       setError('Please select an image.');
       return;
     }
+    if (!isValidDuration(form.duration)) {
+      setError('Duration must start with a non-zero number and include Day/Days or Night/Nights (e.g., "3 Days" or "5 Days 4 Nights").');
+      return;
+    }
+    if (form.title.length > 80) {
+      setError('Title must be 80 characters or fewer.');
+      return;
+    }
+    const numericPrice = form.price ? Number(form.price) : undefined;
+    if (!numericPrice || numericPrice <= 0) {
+      setError('Price must be greater than 0.');
+      return;
+    }
+
+    const numericDiscount = form.discount ? Number(form.discount) : undefined;
+    if (numericDiscount !== undefined && numericDiscount <= 0) {
+      setError('Discount must be greater than 0 if provided.');
+      return;
+    }
+
+    const numericSpots = form.spotsLeft ? Number(form.spotsLeft) : undefined;
+    if (numericSpots !== undefined && numericSpots > 999) {
+      setError('Spots left must be below 1000.');
+      return;
+    }
+    if (numericSpots !== undefined && numericSpots <= 0) {
+      setError('Spots left must be greater than 0.');
+      return;
+    }
     setIsSaving(true);
     try {
       const newDeal = await createDeal({
         title: form.title,
         tagline: form.tagline,
         duration: form.duration,
-        inclusions: form.inclusions.split(',').map(i => i.trim()).filter(Boolean),
-        price: form.price ? Number(form.price) : undefined,
-        discount: form.discount ? Number(form.discount) : undefined,
-        spotsLeft: form.spotsLeft ? Number(form.spotsLeft) : undefined,
+        inclusions: form.inclusions,
+        price: numericPrice,
+        discount: numericDiscount,
+        spotsLeft: numericSpots,
         expiryDate: form.expiryDate || undefined,
         isActive: form.isActive,
       }, form.imageFile);
@@ -188,7 +266,7 @@ export default function DealsManager() {
         title: '',
         tagline: '',
         duration: '',
-        inclusions: '',
+        inclusions: [],
         price: '',
         discount: '',
         spotsLeft: '',
@@ -197,6 +275,7 @@ export default function DealsManager() {
         imageFile: null,
         imagePreview: ''
       });
+      setInclusionInput('');
       setShowModal(false);
     } catch (err: any) {
       console.error('Failed to create deal', err);
@@ -214,11 +293,12 @@ export default function DealsManager() {
 
   const startEdit = (d: Deal) => {
     setEditing(d);
+    cleanupPreview(form.imagePreview);
     setForm({
       title: d.title,
       tagline: d.tagline || '',
       duration: d.duration || '',
-      inclusions: (d.inclusions || []).join(', '),
+      inclusions: d.inclusions || [],
       price: d.price || '',
       discount: d.discount || '',
       spotsLeft: d.spotsLeft != null ? String(d.spotsLeft) : '',
@@ -227,26 +307,57 @@ export default function DealsManager() {
       imageFile: null,
       imagePreview: d.imageUrl ? toMediaUrl(d.imageUrl) : '',
     });
+    setInclusionInput('');
     setShowModal(true);
   };
 
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
+    if (!isValidDuration(form.duration)) {
+      setError('Duration must start with a non-zero number and include Day/Days or Night/Nights (e.g., "3 Days" or "5 Days 4 Nights").');
+      return;
+    }
+    if (form.title.length > 80) {
+      setError('Title must be 80 characters or fewer.');
+      return;
+    }
+    const numericPrice = form.price ? Number(form.price) : undefined;
+    if (!numericPrice || numericPrice <= 0) {
+      setError('Price must be greater than 0.');
+      return;
+    }
+
+    const numericDiscount = form.discount ? Number(form.discount) : undefined;
+    if (numericDiscount !== undefined && numericDiscount <= 0) {
+      setError('Discount must be greater than 0 if provided.');
+      return;
+    }
+
+    const numericSpots = form.spotsLeft ? Number(form.spotsLeft) : undefined;
+    if (numericSpots !== undefined && numericSpots > 999) {
+      setError('Spots left must be below 1000.');
+      return;
+    }
+    if (numericSpots !== undefined && numericSpots <= 0) {
+      setError('Spots left must be greater than 0.');
+      return;
+    }
     setIsSaving(true);
     try {
       await updateDeal(editing.id, {
         title: form.title,
         tagline: form.tagline,
         duration: form.duration,
-        inclusions: form.inclusions.split(',').map(i => i.trim()).filter(Boolean),
-        price: form.price ? Number(form.price) : undefined,
-        discount: form.discount ? Number(form.discount) : undefined,
-        spotsLeft: form.spotsLeft ? Number(form.spotsLeft) : undefined,
+        inclusions: form.inclusions,
+        price: numericPrice,
+        discount: numericDiscount,
+        spotsLeft: numericSpots,
         expiryDate: form.expiryDate || undefined,
         isActive: form.isActive,
       }, form.imageFile);
       await loadDeals();
+      cleanupPreview(form.imagePreview);
       setEditing(null);
       setShowModal(false);
     } catch (err: any) {
@@ -264,9 +375,11 @@ export default function DealsManager() {
   };
 
   const closeModal = () => {
+    cleanupPreview(form.imagePreview);
     setShowModal(false);
     setEditing(null);
-    setForm({ title: '', tagline: '', duration: '', inclusions: '', price: '', discount: '', spotsLeft: '', expiryDate: '', isActive: true, imageFile: null, imagePreview: '' });
+    setForm({ title: '', tagline: '', duration: '', inclusions: [], price: '', discount: '', spotsLeft: '', expiryDate: '', isActive: true, imageFile: null, imagePreview: '' });
+    setInclusionInput('');
   };
 
   const remove = async (id: string) => {
@@ -362,36 +475,47 @@ export default function DealsManager() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
+          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900">
                   {editing ? 'Edit Deal' : 'Create New Deal'}
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-gray-500 text-sm mt-1">
                   {editing ? 'Update your deal details' : 'Add a new special offer to attract customers'}
                 </p>
               </div>
               <button
                 onClick={closeModal}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-xl transition-all shadow-sm"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                type="button"
               >
                 <CloseIcon />
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1">
-              <form onSubmit={editing ? saveEdit : handleAdd} className="p-8 space-y-6">
+            {/* Modal Form */}
+            <div className="overflow-y-auto p-6">
+              <form onSubmit={editing ? saveEdit : handleAdd} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
                     Deal Title <span className="text-red-500">*</span>
+                    <span className={`ml-2 text-xs ${form.title.length > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+                      {form.title.length}/80
+                    </span>
                   </label>
                   <input
                     value={form.title}
-                    onChange={e => setForm({ ...form, title: e.target.value })}
+                    onChange={e => {
+                      if (e.target.value.length <= 80) {
+                        setForm({ ...form, title: e.target.value });
+                      }
+                    }}
                     required
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-3 shadow-sm outline-none transition-all"
                     placeholder="e.g., Summer Beach Getaway"
                   />
                 </div>
@@ -411,7 +535,7 @@ export default function DealsManager() {
                       }
                     }}
                     required
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
                     placeholder="e.g., Mirissa & Unawatuna"
                   />
                 </div>
@@ -425,8 +549,8 @@ export default function DealsManager() {
                       value={form.duration}
                       onChange={e => setForm({ ...form, duration: e.target.value })}
                       required
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                      placeholder="e.g., 3 Days / 2 Nights"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
+                      placeholder="e.g., 3 Days 2 Nights"
                     />
                   </div>
                   <div>
@@ -437,22 +561,51 @@ export default function DealsManager() {
                       value={form.price}
                       onChange={e => setForm({ ...form, price: e.target.value.replace(/\D/g, '') })}
                       required
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
                       placeholder="e.g., 299"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Inclusions (comma separated)
-                  </label>
-                  <input
-                    value={form.inclusions}
-                    onChange={e => setForm({ ...form, inclusions: e.target.value })}
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                    placeholder="e.g., Beach Resort Stay, Whale Watching, All Meals"
-                  />
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Inclusions (add as tags)</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={inclusionInput}
+                      onChange={(e) => setInclusionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addInclusion();
+                        }
+                      }}
+                      className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
+                      placeholder="e.g., Beach Resort Stay"
+                    />
+                    <button
+                      type="button"
+                      onClick={addInclusion}
+                      className="px-4 py-2.5 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {form.inclusions.map((inc, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-2 bg-gray-50 text-gray-800 border border-gray-200 rounded-full px-3 py-1 text-sm"
+                      >
+                        {inc}
+                        <button type="button" onClick={() => removeInclusion(idx)} className="text-gray-700 hover:text-gray-900">
+                          <CloseIcon />
+                        </button>
+                      </span>
+                    ))}
+                    {form.inclusions.length === 0 && (
+                      <span className="text-xs text-gray-400">No inclusions added yet.</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -463,15 +616,23 @@ export default function DealsManager() {
                     <input
                       value={form.discount}
                       onChange={(e) => {
-                        let val = Number(e.target.value);
-                        if (val < 0) val = 0;
-                        if (val > 100) val = 100;
-                        setForm({ ...form, discount: e.target.value === '' ? '' : String(val) });
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setForm({ ...form, discount: '' });
+                          return;
+                        }
+                        let val = Number(raw);
+                        if (Number.isNaN(val)) {
+                          setForm({ ...form, discount: '' });
+                          return;
+                        }
+                        val = Math.min(100, Math.max(1, val));
+                        setForm({ ...form, discount: String(val) });
                       }}
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
                       placeholder="e.g., 10"
                       type="number"
-                      min="0"
+                      min="1"
                       max="100"
                     />
                   </div>
@@ -481,11 +642,20 @@ export default function DealsManager() {
                     </label>
                     <input
                       value={form.spotsLeft}
-                      onChange={e => setForm({ ...form, spotsLeft: e.target.value })}
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setForm({ ...form, spotsLeft: '' });
+                          return;
+                        }
+                        const clamped = Math.min(999, Math.max(1, Number(raw)));
+                        setForm({ ...form, spotsLeft: String(clamped) });
+                      }}
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
                       placeholder="e.g., 20"
                       type="number"
-                      min="0"
+                      min="1"
+                      max="999"
                     />
                   </div>
                 </div>
@@ -499,18 +669,18 @@ export default function DealsManager() {
                       value={form.expiryDate}
                       onChange={e => setForm({ ...form, expiryDate: e.target.value })}
                       required
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
                       type="date"
                       min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
                     />
                   </div>
                   <div className="flex items-end">
-                    <label className="inline-flex items-center gap-2 bg-amber-50 px-4 py-3 rounded-xl cursor-pointer hover:bg-amber-100 transition-all w-full">
+                    <label className="inline-flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-xl cursor-pointer hover:bg-gray-100 transition-all w-full">
                       <input
                         type="checkbox"
                         checked={form.isActive}
                         onChange={e => setForm({ ...form, isActive: e.target.checked })}
-                        className="h-5 w-5 text-amber-600 rounded"
+                        className="h-5 w-5 text-gray-600 rounded"
                       />
                       <span className="text-sm font-semibold text-gray-700">Active</span>
                     </label>
@@ -521,29 +691,47 @@ export default function DealsManager() {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Deal Image <span className="text-red-500">*</span>
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                  <div className="relative group">
                     {form.imagePreview ? (
-                      <img src={form.imagePreview} alt="preview" className="w-full h-48 object-cover rounded-lg mb-4" />
-                    ) : (
-                      <div className="text-gray-400 flex flex-col items-center">
-                        <ImageIcon />
-                        <p className="text-sm mt-2">Upload an image</p>
+                      <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm aspect-video">
+                        <img
+                          src={form.imagePreview}
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                          <span className="bg-white text-gray-800 px-4 py-2 rounded-lg font-medium text-sm shadow-lg">Change Image</span>
+                          <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+                        </label>
                       </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <UploadIcon />
+                          <p className="mb-2 text-sm text-gray-500 mt-3"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                          <p className="text-xs text-gray-400">JPG, PNG, WEBP, GIF (Max 10MB)</p>
+                        </div>
+                        <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+                      </label>
                     )}
-                    <input type="file" accept="image/*" onChange={handleFile} className="mt-4" />
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                  <button type="button" onClick={closeModal} className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700">
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
+                    disabled={isSaving}
+                  >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-6 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-70"
+                    className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none shadow-md shadow-blue-200 transition-all disabled:opacity-70 disabled:shadow-none"
                   >
-                    {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Deal'}
+                    {isSaving ? 'Saving...' : editing ? 'Update Deal' : 'Create Deal'}
                   </button>
                 </div>
               </form>

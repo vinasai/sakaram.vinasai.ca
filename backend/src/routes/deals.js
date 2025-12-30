@@ -36,11 +36,16 @@ router.post(
   [
     body("title").trim().notEmpty().withMessage("Title is required"),
     body("tagline").trim().notEmpty().withMessage("Tagline is required"),
-    body("duration").trim().notEmpty().withMessage("Duration is required"),
+    body("duration")
+      .trim()
+      .notEmpty()
+      .withMessage("Duration is required")
+      .matches(/^[1-9]\d*\s*(Day|Days|Night|Nights)(\s+[1-9]\d*\s*(Day|Days|Night|Nights))?$/i)
+      .withMessage("Duration must start with a non-zero number and include Day/Days or Night/Nights"),
     body("inclusions").toArray().optional().isArray(),
-    body("price").isFloat({ min: 0 }).withMessage("Price is required"),
-    body("discount").optional().isFloat({ min: 0, max: 100 }),
-    body("spotsLeft").optional().isInt({ min: 0 }),
+    body("price").isFloat({ gt: 0 }).withMessage("Price must be greater than 0"),
+    body("discount").optional().isFloat({ gt: 0, max: 100 }).withMessage("Discount must be greater than 0"),
+    body("spotsLeft").optional().isInt({ gt: 0, lt: 1000 }).withMessage("Spots left must be between 1 and 999"),
     body("expiryDate").isISO8601().withMessage("Expiry Date is required"),
     body("isActive").optional().isBoolean(),
   ],
@@ -78,11 +83,15 @@ router.put(
   [
     body("title").optional().trim().notEmpty(),
     body("tagline").optional().trim(),
-    body("duration").optional().trim(),
+    body("duration")
+      .optional()
+      .trim()
+      .matches(/^[1-9]\d*\s*(Day|Days|Night|Nights)(\s+[1-9]\d*\s*(Day|Days|Night|Nights))?$/i)
+      .withMessage("Duration must start with a non-zero number and include Day/Days or Night/Nights"),
     body("inclusions").toArray().optional().isArray(),
-    body("price").optional().isFloat({ min: 0 }),
-    body("discount").optional().isFloat({ min: 0, max: 100 }),
-    body("spotsLeft").optional().isInt({ min: 0 }),
+    body("price").optional().isFloat({ gt: 0 }).withMessage("Price must be greater than 0"),
+    body("discount").optional().isFloat({ gt: 0, max: 100 }).withMessage("Discount must be greater than 0"),
+    body("spotsLeft").optional().isInt({ gt: 0, lt: 1000 }).withMessage("Spots left must be between 1 and 999"),
     body("expiryDate").optional().isISO8601(),
     body("isActive").optional().isBoolean(),
   ],

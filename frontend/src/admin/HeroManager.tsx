@@ -68,6 +68,27 @@ const UploadIcon = () => (
   </svg>
 );
 
+// Error Modal Component
+const ErrorModal = ({ message, onClose }: { message: string, onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+    <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
+      <div className="flex items-center gap-3 text-red-600 mb-4">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h3 className="text-lg font-bold">Error</h3>
+      </div>
+      <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+      <button
+        onClick={onClose}
+        className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg transition-colors"
+      >
+        Dismiss
+      </button>
+    </div>
+  </div>
+);
+
 // Updated Skeleton to match Grid Layout
 function HeroGridSkeleton({ count = 3 }: { count?: number }) {
   return (
@@ -95,6 +116,7 @@ function HeroGridSkeleton({ count = 3 }: { count?: number }) {
 export default function HeroManager() {
   const [items, setItems] = useState<Hero[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Hero | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -108,6 +130,35 @@ export default function HeroManager() {
 
   const [isSaving, setIsSaving] = useState(false);
 
+  // Validation helper functions
+  const validateTitle = (title: string): string | null => {
+    if (!title.trim()) return 'Title is required.';
+    
+    // Check character restrictions (letters, numbers, spaces only)
+    const allowedCharsRegex = /^[a-zA-Z0-9\s]+$/;
+    if (!allowedCharsRegex.test(title)) {
+      return 'Title can only contain letters, numbers, and spaces.';
+    }
+    
+    // Check character count (max 80 characters)
+    if (title.length > 80) {
+      return `Title cannot exceed 80 characters. Current: ${title.length} characters.`;
+    }
+    
+    return null;
+  };
+
+  const validateSubtitle = (subtitle: string): string | null => {
+    if (!subtitle.trim()) return null; // Subtitle is optional
+    
+    // Check character count (max 80 characters)
+    if (subtitle.length > 80) {
+      return `Subtitle cannot exceed 80 characters. Current: ${subtitle.length} characters.`;
+    }
+    
+    return null;
+  };
+
   const cleanupPreview = (url: string) => {
     if (url && url.startsWith('blob:')) {
       URL.revokeObjectURL(url);
@@ -120,13 +171,13 @@ export default function HeroManager() {
 
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
-      alert('Invalid file type. Please upload JPG, PNG, WEBP, or GIF.');
+      setError('Invalid file type. Please upload JPG, PNG, WEBP, or GIF.');
       e.target.value = '';
       return;
     }
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      alert('File too large. Maximum size is 10MB.');
+      setError('File too large. Maximum size is 10MB.');
       e.target.value = '';
       return;
     }
@@ -193,12 +244,23 @@ export default function HeroManager() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) {
-      alert('Please enter a title.');
+    
+    // Validate title
+    const titleError = validateTitle(form.title);
+    if (titleError) {
+      setError(titleError);
       return;
     }
+    
+    // Validate subtitle
+    const subtitleError = validateSubtitle(form.subtitle);
+    if (subtitleError) {
+      setError(subtitleError);
+      return;
+    }
+    
     if (!form.imageFile) {
-      alert('Please select an image.');
+      setError('Please select an image.');
       return;
     }
 
@@ -207,9 +269,15 @@ export default function HeroManager() {
       await createHeroBanner({ title: form.title, subtitle: form.subtitle }, form.imageFile);
       await loadItems();
       closeModal();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create banner', err);
-      alert('Unable to create banner.');
+      let errorMessage = 'Unable to create banner.';
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        errorMessage = err.response.data.errors.map((e: any) => `${e.path}: ${e.msg}`).join('\n');
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      setError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -218,8 +286,18 @@ export default function HeroManager() {
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
-    if (!form.title.trim()) {
-      alert('Please enter a title.');
+    
+    // Validate title
+    const titleError = validateTitle(form.title);
+    if (titleError) {
+      setError(titleError);
+      return;
+    }
+    
+    // Validate subtitle
+    const subtitleError = validateSubtitle(form.subtitle);
+    if (subtitleError) {
+      setError(subtitleError);
       return;
     }
 
@@ -228,9 +306,15 @@ export default function HeroManager() {
       await updateHeroBanner(editing.id, { title: form.title, subtitle: form.subtitle }, form.imageFile);
       await loadItems();
       closeModal();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update banner', err);
-      alert('Unable to update banner.');
+      let errorMessage = 'Unable to update banner.';
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        errorMessage = err.response.data.errors.map((e: any) => `${e.path}: ${e.msg}`).join('\n');
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      setError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -241,14 +325,15 @@ export default function HeroManager() {
     try {
       await deleteHeroBanner(id);
       setItems((s) => s.filter((i) => i.id !== id));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete banner', err);
-      alert('Unable to delete banner.');
+      setError('Unable to delete banner.');
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto">
+      {error && <ErrorModal message={error} onClose={() => setError(null)} />}
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -365,55 +450,82 @@ export default function HeroManager() {
             <div className="overflow-y-auto p-6">
               <form onSubmit={editing ? saveEdit : handleAdd} className="space-y-6">
 
-                {/* Image Upload Area */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Banner Image {editing ? <span className="font-normal text-gray-500">(Optional)</span> : <span className="text-red-500">*</span>}
-                  </label>
+                {/* Image Upload Area - Only shown when creating new banner */}
+                {!editing && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Banner Image <span className="text-red-500">*</span>
+                    </label>
 
-                  <div className="relative group">
-                    {form.imagePreview ? (
-                      <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm aspect-video">
-                        <img
-                          src={form.imagePreview}
-                          alt="preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                          <span className="bg-white text-gray-800 px-4 py-2 rounded-lg font-medium text-sm shadow-lg">Change Image</span>
+                    <div className="relative group">
+                      {form.imagePreview ? (
+                        <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm aspect-video">
+                          <img
+                            src={form.imagePreview}
+                            alt="preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <span className="bg-white text-gray-800 px-4 py-2 rounded-lg font-medium text-sm shadow-lg">Change Image</span>
+                            <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <UploadIcon />
+                            <p className="mb-2 text-sm text-gray-500 mt-3"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                            <p className="text-xs text-gray-400">JPG, PNG, WEBP (Max 10MB)</p>
+                          </div>
                           <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
                         </label>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <UploadIcon />
-                          <p className="mb-2 text-sm text-gray-500 mt-3"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                          <p className="text-xs text-gray-400">JPG, PNG, WEBP (Max 10MB)</p>
-                        </div>
-                        <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
-                      </label>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Current Image Preview - Only shown when editing */}
+                {editing && form.imagePreview && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Current Banner Image
+                    </label>
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-sm aspect-video">
+                      <img
+                        src={form.imagePreview}
+                        alt="current banner"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Image cannot be changed when editing. Delete and create a new banner to use a different image.</p>
+                  </div>
+                )}
 
                 {/* Text Inputs */}
                 <div className="grid gap-5">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">
                       Title <span className="text-red-500">*</span>
+                      <span className={`ml-2 text-xs ${form.title.length > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+                        {form.title.length}/80 characters
+                      </span>
                     </label>
                     <input
                       value={form.title}
                       onChange={(e) => setForm({ ...form, title: e.target.value })}
                       required
                       className="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-3 shadow-sm outline-none transition-all"
-                      placeholder="e.g., Summer Getaway"
+                      placeholder="e.g., Summer Getaway (letters, numbers, and spaces only)"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Subtitle</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Subtitle
+                      <span className={`ml-2 text-xs ${form.subtitle.length > 80 ? 'text-red-500' : 'text-gray-400'}`}>
+                        {form.subtitle.length}/80 characters
+                      </span>
+                    </label>
                     <input
                       value={form.subtitle}
                       onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
