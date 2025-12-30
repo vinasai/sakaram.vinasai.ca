@@ -210,7 +210,7 @@ export default function Tours() {
                       </div>
                       <div className="flex items-center text-gray-700 bg-gray-50 px-3 py-2 rounded-lg group-hover:bg-teal-50 transition-colors duration-500">
                         <Clock size={16} className="mr-2 text-teal-600 " />
-                        <span className="font-medium">{tour.duration} day(s)</span>
+                        <span className="font-medium">{tour.duration}</span>
                       </div>
                     </div>
 
