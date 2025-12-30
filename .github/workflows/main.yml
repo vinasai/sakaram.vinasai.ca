@@ -28,6 +28,18 @@ jobs:
             # Ensure the remote SSH known_hosts is set up for github.com
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+            UPLOADS_DIR="$SERVER_PATH/backend/uploads"
+            BACKUP_TAR="/tmp/sakaram-uploads-$(date +%Y%m%d-%H%M%S).tar.gz"
+            
+            if [ -d "$UPLOADS_DIR" ]; then
+              echo "Backing up uploads folder from: $UPLOADS_DIR"
+              tar -czf "$BACKUP_TAR" -C "$SERVER_PATH" "backend/uploads"
+              echo "Uploads backup created at: $BACKUP_TAR"
+            else
+              echo "No existing uploads folder found at $UPLOADS_DIR (skipping backup)."
+              BACKUP_TAR=""
+            fi
             
             # Perform a fresh clone
             TEMP_CLONE_DIR="/tmp/sakaram-$(date +%s)"
@@ -41,6 +53,15 @@ jobs:
             mkdir -p "$SERVER_PATH"
             mv "$TEMP_CLONE_DIR"/* "$SERVER_PATH/"
             rm -rf "$TEMP_CLONE_DIR"
+
+            if [ -n "${BACKUP_TAR}" ] && [ -f "$BACKUP_TAR" ]; then
+              echo "Restoring uploads folder into: $SERVER_PATH/backend/uploads"
+              mkdir -p "$SERVER_PATH/backend"
+              tar -xzf "$BACKUP_TAR" -C "$SERVER_PATH"
+              echo "Uploads restored."
+            else
+              echo "No uploads backup to restore (skipping restore)."
+            fi
             
             # --- Deploy the frontend (Next.js) ---
             echo "Deploying frontend..."
