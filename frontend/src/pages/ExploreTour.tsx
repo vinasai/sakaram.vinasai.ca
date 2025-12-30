@@ -221,9 +221,49 @@ export default function ExploreTour() {
                   <Info className="text-emerald-600" size={24} />
                   About this trip
                 </h3>
-                <div className="prose prose-lg text-gray-600 leading-relaxed max-w-none">
-                  {tour.description || "Experience the beauty of this location with our comprehensive guided tour. Perfect for travelers seeking adventure and culture."}
-                </div>
+                <div 
+                  className="prose prose-lg text-gray-600 leading-relaxed max-w-none rich-text-content"
+                  dangerouslySetInnerHTML={{ 
+                    __html: tour.description || "Experience the beauty of this location with our comprehensive guided tour. Perfect for travelers seeking adventure and culture." 
+                  }}
+                />
+
+                <style>{`
+                  .rich-text-content h3 {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    margin-top: 1rem;
+                    margin-bottom: 0.75rem;
+                    color: #1f2937;
+                  }
+                  .rich-text-content p {
+                    margin-bottom: 1rem;
+                    line-height: 1.75;
+                  }
+                  .rich-text-content ul, .rich-text-content ol {
+                    margin-left: 1.5rem;
+                    margin-bottom: 1rem;
+                  }
+                  .rich-text-content li {
+                    margin-bottom: 0.5rem;
+                  }
+                  .rich-text-content strong {
+                    font-weight: 700;
+                    color: #374151;
+                  }
+                  .rich-text-content em {
+                    font-style: italic;
+                  }
+                  .rich-text-content u {
+                    text-decoration: underline;
+                  }
+                  .rich-text-content ul {
+                    list-style-type: disc;
+                  }
+                  .rich-text-content ol {
+                    list-style-type: decimal;
+                  }
+                `}</style>
 
                 {/* Mini Gallery Grid if photos exist */}
                 {galleryPhotos.length > 0 && (

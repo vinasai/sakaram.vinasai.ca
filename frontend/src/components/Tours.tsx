@@ -1,4 +1,4 @@
-import { MapPin, DollarSign, Clock, Star, ArrowRight, Users, Sparkles, Globe } from 'lucide-react';
+import { MapPin, DollarSign, Clock, Star, ArrowRight, Users,  Globe, Flame } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { fetchTourDetails, fetchTours, toMediaUrl } from '../api/client';
 import LoadingState from './LoadingState';
@@ -165,7 +165,7 @@ export default function Tours() {
                     {/* Popular Badge with Animation */}
                     {tour.popular && (
                       <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-2xl flex items-center space-x-1.5 animate-bounce-slow">
-                        <Sparkles size={14} className="animate-spin-slow" />
+                        <Flame  size={14} />
                         <span>HOT DEAL</span>
                       </div>
                     )}
@@ -209,13 +209,13 @@ export default function Tours() {
                         <span className="font-medium">{tour.location}</span>
                       </div>
                       <div className="flex items-center text-gray-700 bg-gray-50 px-3 py-2 rounded-lg group-hover:bg-teal-50 transition-colors duration-500">
-                        <Clock size={16} className="mr-2 text-teal-600 group-hover:animate-spin-slow" />
+                        <Clock size={16} className="mr-2 text-teal-600 " />
                         <span className="font-medium">{tour.duration} day(s)</span>
                       </div>
                     </div>
 
                     {/* CTA Button with Ripple Effect */}
-                    <button onClick={() => openDetail(tour)} className="relative w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:via-teal-700 hover:to-cyan-700 text-white font-bold py-4 rounded-2xl transition-all duration-500 flex items-center justify-center space-x-2 shadow-lg hover:shadow-2xl overflow-hidden group/btn transform group-hover:scale-105">
+                    <button onClick={() => openDetail(tour)} className="relative w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:via-teal-700 hover:to-cyan-700 text-white font-bold py-4 rounded-2xl transition-all duration-500 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl overflow-hidden group/btn transform group-hover:scale-105">
                       <span className="relative z-10">Explore Now</span>
                       <ArrowRight size={20} className="relative z-10 transform group-hover/btn:translate-x-2 transition-transform duration-500" />
                       {/* Ripple Effect */}
@@ -224,8 +224,6 @@ export default function Tours() {
                     </button>
                   </div>
 
-                  {/* Animated Border Bottom */}
-                  <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left"></div>
                 </div>
               </div>
             ))}
