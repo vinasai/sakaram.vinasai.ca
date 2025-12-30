@@ -396,7 +396,7 @@ export default function DealsManager() {
   const savedCount = items.length;
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto">
       {error && <ErrorModal message={error} onClose={() => setError(null)} />}
 
       <div className="flex items-center justify-between mb-6">
@@ -435,7 +435,7 @@ export default function DealsManager() {
 
           {items.map(i => (
             <div key={i.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
+              <div className="h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
                 {i.imageUrl ? (
                   <img src={toMediaUrl(i.imageUrl)} alt="deal" className="w-full h-full object-cover" />
                 ) : (
