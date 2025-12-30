@@ -1259,7 +1259,7 @@ export default function TourManager() {
                       <button
                         type="button"
                         onClick={addPhotoFromUrl}
-                        className="px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none  shadow-blue-200 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                        className="px-6 py-3 text-white bg-gray-600 rounded-lg hover:bg-gray-700 focus:outline-none  shadow-gray-200 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
                       >
                         Add URL
                       </button>
@@ -1385,7 +1385,7 @@ export default function TourManager() {
                       <button
                         type="button"
                         onClick={addIncludedItem}
-                        className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                        className="px-4 py-2.5 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
                       >
                         Add
                       </button>
@@ -1434,7 +1434,7 @@ export default function TourManager() {
                       <button
                         type="button"
                         onClick={addExcludedItem}
-                        className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                        className="px-4 py-2.5 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
                       >
                         Add
                       </button>
@@ -1524,7 +1524,7 @@ export default function TourManager() {
                         type="button"
                         onClick={addActivityToDay}
                         disabled={!currentDay.trim() || !currentActivity.trim()}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <PlusIcon />
                         Add Activity
@@ -1611,12 +1611,7 @@ export default function TourManager() {
                   if (formEl) (formEl as HTMLFormElement).requestSubmit?.();
                 }}
               >
-                {isSaving && (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
+                
                 {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Tour'}
               </button>
             </div>
