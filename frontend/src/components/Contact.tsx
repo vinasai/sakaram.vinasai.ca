@@ -328,7 +328,7 @@ export default function Contact() {
                 <Mail size={20} className="text-emerald-600" />
               </div>
               <h4 className="text-base font-bold text-gray-800 mb-1">Email Us</h4>
-              <p className="text-gray-600 text-sm">info@sarkamtours.com</p>
+              <p className="text-gray-600 text-sm">info@Sakaramtours.com</p>
             </div>
 
             <div className="bg-white/95 backdrop-blur-md rounded-xl p-5 shadow-lg border border-white/50 hover:transform hover:scale-105 transition-all duration-300">
