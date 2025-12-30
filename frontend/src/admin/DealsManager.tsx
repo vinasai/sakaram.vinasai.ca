@@ -115,9 +115,72 @@ export default function DealsManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [inclusionInput, setInclusionInput] = useState('');
 
+  // Duration state
+  const [durationType, setDurationType] = useState<'days' | 'nights' | 'days-nights'>('days');
+  const [durationDays, setDurationDays] = useState('');
+  const [durationNights, setDurationNights] = useState('');
+
   const durationPattern = /^[1-9]\d*\s*(Day|Days|Night|Nights)(\s+[1-9]\d*\s*(Day|Days|Night|Nights))?$/i;
 
   const isValidDuration = (value: string) => durationPattern.test(value.trim());
+
+  // Build duration string from separate inputs
+  const buildDurationString = (): string => {
+    if (durationType === 'days') {
+      const val = parseInt(durationDays);
+      if (!val || val <= 0) return '';
+      return `${val} ${val === 1 ? 'Day' : 'Days'}`;
+    } else if (durationType === 'nights') {
+      const val = parseInt(durationNights);
+      if (!val || val <= 0) return '';
+      return `${val} ${val === 1 ? 'Night' : 'Nights'}`;
+    } else if (durationType === 'days-nights') {
+      const days = parseInt(durationDays);
+      const nights = parseInt(durationNights);
+      if (!days || days <= 0 || !nights || nights <= 0) return '';
+      return `${days} ${days === 1 ? 'Day' : 'Days'} ${nights} ${nights === 1 ? 'Night' : 'Nights'}`;
+    }
+    return '';
+  };
+
+  // Parse duration string into separate inputs
+  const parseDurationString = (duration: string) => {
+    if (!duration) {
+      setDurationType('days');
+      setDurationDays('');
+      setDurationNights('');
+      return;
+    }
+
+    const combinedMatch = duration.match(/^(\d+)\s+(Day|Days)\s+(\d+)\s+(Night|Nights)$/i);
+    if (combinedMatch) {
+      setDurationType('days-nights');
+      setDurationDays(combinedMatch[1]);
+      setDurationNights(combinedMatch[3]);
+      return;
+    }
+
+    const daysMatch = duration.match(/^(\d+)\s+(Day|Days)$/i);
+    if (daysMatch) {
+      setDurationType('days');
+      setDurationDays(daysMatch[1]);
+      setDurationNights('');
+      return;
+    }
+
+    const nightsMatch = duration.match(/^(\d+)\s+(Night|Nights)$/i);
+    if (nightsMatch) {
+      setDurationType('nights');
+      setDurationNights(nightsMatch[1]);
+      setDurationDays('');
+      return;
+    }
+
+    // Default fallback
+    setDurationType('days');
+    setDurationDays('');
+    setDurationNights('');
+  };
 
   const cleanupPreview = (url: string) => {
     if (url && url.startsWith('blob:')) {
@@ -209,6 +272,9 @@ export default function DealsManager() {
       imagePreview: ''
     });
     setInclusionInput('');
+    setDurationType('days');
+    setDurationDays('');
+    setDurationNights('');
     setShowModal(true);
   };
 
@@ -218,8 +284,10 @@ export default function DealsManager() {
       setError('Please select an image.');
       return;
     }
-    if (!isValidDuration(form.duration)) {
-      setError('Duration must start with a non-zero number and include Day/Days or Night/Nights (e.g., "3 Days" or "5 Days 4 Nights").');
+
+    const builtDuration = buildDurationString();
+    if (!builtDuration) {
+      setError('Please provide a valid duration.');
       return;
     }
     if (form.title.length > 80) {
@@ -252,7 +320,7 @@ export default function DealsManager() {
       const newDeal = await createDeal({
         title: form.title,
         tagline: form.tagline,
-        duration: form.duration,
+        duration: builtDuration,
         inclusions: form.inclusions,
         price: numericPrice,
         discount: numericDiscount,
@@ -276,6 +344,9 @@ export default function DealsManager() {
         imagePreview: ''
       });
       setInclusionInput('');
+      setDurationType('days');
+      setDurationDays('');
+      setDurationNights('');
       setShowModal(false);
     } catch (err: any) {
       console.error('Failed to create deal', err);
@@ -308,14 +379,17 @@ export default function DealsManager() {
       imagePreview: d.imageUrl ? toMediaUrl(d.imageUrl) : '',
     });
     setInclusionInput('');
+    parseDurationString(d.duration || '');
     setShowModal(true);
   };
 
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
-    if (!isValidDuration(form.duration)) {
-      setError('Duration must start with a non-zero number and include Day/Days or Night/Nights (e.g., "3 Days" or "5 Days 4 Nights").');
+
+    const builtDuration = buildDurationString();
+    if (!builtDuration) {
+      setError('Please provide a valid duration.');
       return;
     }
     if (form.title.length > 80) {
@@ -348,7 +422,7 @@ export default function DealsManager() {
       await updateDeal(editing.id, {
         title: form.title,
         tagline: form.tagline,
-        duration: form.duration,
+        duration: builtDuration,
         inclusions: form.inclusions,
         price: numericPrice,
         discount: numericDiscount,
@@ -380,6 +454,9 @@ export default function DealsManager() {
     setEditing(null);
     setForm({ title: '', tagline: '', duration: '', inclusions: [], price: '', discount: '', spotsLeft: '', expiryDate: '', isActive: true, imageFile: null, imagePreview: '' });
     setInclusionInput('');
+    setDurationType('days');
+    setDurationDays('');
+    setDurationNights('');
   };
 
   const remove = async (id: string) => {
@@ -545,13 +622,73 @@ export default function DealsManager() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Duration <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      value={form.duration}
-                      onChange={e => setForm({ ...form, duration: e.target.value })}
-                      required
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:border-transparent transition-all"
-                      placeholder="e.g., 3 Days 2 Nights"
-                    />
+                    
+                    {/* Duration Type Selector */}
+                    <div className="mb-3">
+                      <select
+                        value={durationType}
+                        onChange={(e) => {
+                          setDurationType(e.target.value as 'days' | 'nights' | 'days-nights');
+                          setDurationDays('');
+                          setDurationNights('');
+                        }}
+                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      >
+                        <option value="days">Days Only</option>
+                        <option value="nights">Nights Only</option>
+                        <option value="days-nights">Days & Nights</option>
+                      </select>
+                    </div>
+
+                    {/* Duration Value Inputs */}
+                    {durationType === 'days-nights' ? (
+                      <div className="space-y-2">
+                        <input
+                          type="number"
+                          min={1}
+                          value={durationDays}
+                          onChange={(e) => setDurationDays(e.target.value)}
+                          className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          placeholder="Days (e.g., 3)"
+                          required
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          value={durationNights}
+                          onChange={(e) => setDurationNights(e.target.value)}
+                          className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          placeholder="Nights (e.g., 2)"
+                          required
+                        />
+                      </div>
+                    ) : durationType === 'days' ? (
+                      <input
+                        type="number"
+                        min={1}
+                        value={durationDays}
+                        onChange={(e) => setDurationDays(e.target.value)}
+                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="e.g., 3"
+                        required
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        min={1}
+                        value={durationNights}
+                        onChange={(e) => setDurationNights(e.target.value)}
+                        className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="e.g., 2"
+                        required
+                      />
+                    )}
+                    
+                    <p className="mt-2 text-xs text-gray-500">
+                      {durationType === 'days' && 'Enter number of days (e.g., 3 Days)'}
+                      {durationType === 'nights' && 'Enter number of nights (e.g., 2 Nights)'}
+                      {durationType === 'days-nights' && 'Enter both days and nights (e.g., 3 Days 2 Nights)'}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">

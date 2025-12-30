@@ -68,8 +68,8 @@ router.post(
       .trim()
       .notEmpty()
       .withMessage("Duration is required")
-      .matches(/^[1-9]\d*(?:\s*-\s*[1-9]\d*)?\s*(hour|hours)$/i)
-      .withMessage("Duration must start with a non-zero number and end with 'hour' or 'hours' (e.g., '3-5 hours')"),
+      .matches(/^([1-9]\d*\s+(hour|hours|day|days)|[1-9]\d*\s*-\s*[1-9]\d*\s+(day|days))$/i)
+      .withMessage("Duration must be: single hours/days (e.g., '4 hours', '2 days') or range for days only (e.g., '2-5 days')"),
     body("rating").optional().isFloat({ min: 0, max: 5 }).withMessage("Rating must be between 0 and 5"),
     body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
@@ -127,8 +127,8 @@ router.put(
       .trim()
       .notEmpty()
       .withMessage("Duration cannot be empty")
-      .matches(/^[1-9]\d*(?:\s*-\s*[1-9]\d*)?\s*(hour|hours)$/i)
-      .withMessage("Duration must start with a non-zero number and end with 'hour' or 'hours' (e.g., '3-5 hours')"),
+      .matches(/^([1-9]\d*\s+(hour|hours|day|days)|[1-9]\d*\s*-\s*[1-9]\d*\s+(day|days))$/i)
+      .withMessage("Duration must be: single hours/days (e.g., '4 hours', '2 days') or range for days only (e.g., '2-5 days')"),
     body("rating").optional().isFloat({ min: 0, max: 5 }).withMessage("Rating must be between 0 and 5"),
     body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),

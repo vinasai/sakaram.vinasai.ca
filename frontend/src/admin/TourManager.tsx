@@ -43,7 +43,7 @@ type TourDetails = {
 };
 
 const MAX_TEXT_LENGTH = 80;
-const DURATION_REGEX = /^[1-9]\d*(?:\s*-\s*[1-9]\d*)?\s*(hour|hours)$/i;
+const DURATION_REGEX = /^([1-9]\d*\s+(hour|hours|day|days)|[1-9]\d*\s*-\s*[1-9]\d*\s+(day|days))$/i;
 
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,7 +255,75 @@ export default function TourManager() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
 
+  // Duration state
+  const [durationType, setDurationType] = useState<'hours' | 'days' | 'day-range'>('hours');
+  const [durationValue, setDurationValue] = useState('');
+  const [durationRangeStart, setDurationRangeStart] = useState('');
+  const [durationRangeEnd, setDurationRangeEnd] = useState('');
+
   const isValidDuration = (value: string) => DURATION_REGEX.test(value.trim());
+
+  // Build duration string from separate inputs
+  const buildDurationString = (): string => {
+    if (durationType === 'hours') {
+      const val = parseInt(durationValue);
+      if (!val || val <= 0) return '';
+      return `${val} ${val === 1 ? 'hour' : 'hours'}`;
+    } else if (durationType === 'days') {
+      const val = parseInt(durationValue);
+      if (!val || val <= 0) return '';
+      return `${val} ${val === 1 ? 'day' : 'days'}`;
+    } else if (durationType === 'day-range') {
+      const start = parseInt(durationRangeStart);
+      const end = parseInt(durationRangeEnd);
+      if (!start || !end || start <= 0 || end <= 0 || start >= end) return '';
+      return `${start}-${end} days`;
+    }
+    return '';
+  };
+
+  // Parse duration string into separate inputs
+  const parseDurationString = (duration: string) => {
+    if (!duration) {
+      setDurationType('hours');
+      setDurationValue('');
+      setDurationRangeStart('');
+      setDurationRangeEnd('');
+      return;
+    }
+
+    const rangeMatch = duration.match(/^(\d+)\s*-\s*(\d+)\s+(day|days)$/i);
+    if (rangeMatch) {
+      setDurationType('day-range');
+      setDurationRangeStart(rangeMatch[1]);
+      setDurationRangeEnd(rangeMatch[2]);
+      setDurationValue('');
+      return;
+    }
+
+    const singleMatch = duration.match(/^(\d+)\s+(hour|hours|day|days)$/i);
+    if (singleMatch) {
+      const unit = singleMatch[2].toLowerCase();
+      if (unit.startsWith('hour')) {
+        setDurationType('hours');
+        setDurationValue(singleMatch[1]);
+        setDurationRangeStart('');
+        setDurationRangeEnd('');
+      } else {
+        setDurationType('days');
+        setDurationValue(singleMatch[1]);
+        setDurationRangeStart('');
+        setDurationRangeEnd('');
+      }
+      return;
+    }
+
+    // Default fallback
+    setDurationType('hours');
+    setDurationValue('');
+    setDurationRangeStart('');
+    setDurationRangeEnd('');
+  };
 
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -500,6 +568,10 @@ export default function TourManager() {
     setExpandedDays(new Set());
     setPhotoFiles([]);
     setPhotoUrls([]);
+    setDurationType('hours');
+    setDurationValue('');
+    setDurationRangeStart('');
+    setDurationRangeEnd('');
     setShowModal(true);
   };
 
@@ -510,7 +582,10 @@ export default function TourManager() {
     if (!form.name.trim()) missingFields.push('Tour Name');
     if (!form.location.trim()) missingFields.push('Location');
     if (!form.price || Number(form.price) <= 0) missingFields.push('Price');
-    if (!form.duration.trim() || !isValidDuration(form.duration)) missingFields.push('Duration (e.g., 3-5 hours)');
+
+    const builtDuration = buildDurationString();
+    if (!builtDuration) missingFields.push('Duration');
+
     if (!form.tagline.trim()) missingFields.push('Tagline');
     if (!form.description.trim()) missingFields.push('Description');
 
@@ -536,7 +611,7 @@ export default function TourManager() {
         name: form.name,
         location: form.location,
         price: Number(form.price) || 0,
-        duration: form.duration.trim(),
+        duration: builtDuration,
         rating: safeRating,
         reviewsCount: form.reviews ? Number(form.reviews) : 0,
         isHotDeal: !!form.popular,
@@ -603,6 +678,10 @@ export default function TourManager() {
       setExpandedDays(new Set());
       setPhotoFiles([]);
       setPhotoUrls([]);
+      setDurationType('hours');
+      setDurationValue('');
+      setDurationRangeStart('');
+      setDurationRangeEnd('');
       setShowModal(false);
     } catch (err) {
       console.error('Failed to create tour', err);
@@ -683,6 +762,9 @@ export default function TourManager() {
         itineraryIds: detail.itinerary?.map((item: any) => item._id) || [],
         imageIds: detail.images?.map((item: any) => item._id) || [],
       });
+
+      // Parse duration into separate inputs
+      parseDurationString(detail.tour.duration || '');
     } catch (err) {
       console.error('Failed to load tour details', err);
       setForm({
@@ -703,6 +785,9 @@ export default function TourManager() {
       });
       setPhotoFiles([]);
       setPhotoUrls([]);
+
+      // Parse duration for fallback case too
+      parseDurationString(t.duration || '');
     }
 
     setFormError('');
@@ -722,7 +807,10 @@ export default function TourManager() {
     if (!form.name.trim()) missingFields.push('Tour Name');
     if (!form.location.trim()) missingFields.push('Location');
     if (!form.price || Number(form.price) <= 0) missingFields.push('Price');
-    if (!form.duration.trim() || !isValidDuration(form.duration)) missingFields.push('Duration (e.g., 3-5 hours)');
+
+    const builtDuration = buildDurationString();
+    if (!builtDuration) missingFields.push('Duration');
+
     if (!form.tagline.trim()) missingFields.push('Tagline');
     if (!form.description.trim()) missingFields.push('Description');
 
@@ -748,7 +836,7 @@ export default function TourManager() {
         name: form.name,
         location: form.location,
         price: Number(form.price) || 0,
-        duration: form.duration.trim(),
+        duration: builtDuration,
         rating: safeRating,
         reviewsCount: form.reviews ? Number(form.reviews) : 0,
         isHotDeal: !!form.popular,
@@ -821,6 +909,10 @@ export default function TourManager() {
       setExpandedDays(new Set());
       setPhotoFiles([]);
       setPhotoUrls([]);
+      setDurationType('hours');
+      setDurationValue('');
+      setDurationRangeStart('');
+      setDurationRangeEnd('');
       setShowModal(false);
     } catch (err) {
       console.error('Failed to update tour', err);
@@ -878,6 +970,10 @@ export default function TourManager() {
     setExpandedDays(new Set());
     setPhotoFiles([]);
     setPhotoUrls([]);
+    setDurationType('hours');
+    setDurationValue('');
+    setDurationRangeStart('');
+    setDurationRangeEnd('');
   };
 
   const remove = async (id: string) => {
@@ -1100,20 +1196,75 @@ export default function TourManager() {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Duration <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                          <ClockIcon />
-                        </div>
-                        <input
-                          value={form.duration}
-                          onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                          maxLength={MAX_TEXT_LENGTH}
-                          className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                          placeholder="4-5 hours"
-                          required
-                        />
-                        <p className="mt-2 text-xs text-gray-500">Use formats like "3-5 hours" or "4 hours"</p>
+                      
+                      {/* Duration Type Selector */}
+                      <div className="mb-3">
+                        <select
+                          value={durationType}
+                          onChange={(e) => {
+                            setDurationType(e.target.value as 'hours' | 'days' | 'day-range');
+                            setDurationValue('');
+                            setDurationRangeStart('');
+                            setDurationRangeEnd('');
+                          }}
+                          className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        >
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                          <option value="day-range">Day Range</option>
+                        </select>
                       </div>
+
+                      {/* Duration Value Inputs */}
+                      {durationType === 'day-range' ? (
+                        <div className="flex gap-3 items-center">
+                          <div className="flex-1">
+                            <input
+                              type="number"
+                              min={1}
+                              value={durationRangeStart}
+                              onChange={(e) => setDurationRangeStart(e.target.value)}
+                              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              placeholder="Start"
+                              required
+                            />
+                          </div>
+                          <span className="text-gray-400 font-semibold">to</span>
+                          <div className="flex-1">
+                            <input
+                              type="number"
+                              min={1}
+                              value={durationRangeEnd}
+                              onChange={(e) => setDurationRangeEnd(e.target.value)}
+                              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                              placeholder="End"
+                              required
+                            />
+                          </div>
+                          <span className="text-gray-600 font-medium">days</span>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                            <ClockIcon />
+                          </div>
+                          <input
+                            type="number"
+                            min={1}
+                            value={durationValue}
+                            onChange={(e) => setDurationValue(e.target.value)}
+                            className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            placeholder={durationType === 'hours' ? 'e.g., 4' : 'e.g., 2'}
+                            required
+                          />
+                        </div>
+                      )}
+                      
+                      <p className="mt-2 text-xs text-gray-500">
+                        {durationType === 'hours' && 'Single hours only (e.g., 4 hours)'}
+                        {durationType === 'days' && 'Single days only (e.g., 2 days)'}
+                        {durationType === 'day-range' && 'Range for days only (e.g., 2-5 days)'}
+                      </p>
                     </div>
 
                     <div>
