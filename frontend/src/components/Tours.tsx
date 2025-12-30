@@ -101,7 +101,7 @@ export default function Tours() {
             <span className="text-sm font-semibold">Popular Tours</span>
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-800 mb-4">
-            Sarkam <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Collections</span>
+            Sakaram <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Collections</span>
           </h2>
           <div className="flex items-center justify-center space-x-2 mb-6">
             <div className="w-20 h-1 bg-gradient-to-r from-transparent via-emerald-600 to-transparent rounded-full"></div>

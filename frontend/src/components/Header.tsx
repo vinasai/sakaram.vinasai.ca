@@ -155,7 +155,7 @@ export default function Header() {
               <div className="relative">
                 <img
                   src={sakaramLogo}
-                  alt="Sarkam Tours Logo"
+                  alt="Sakaram Tours Logo"
                   className="h-12 lg:h-14 w-auto transition-transform group-hover:scale-105"
                 />
               </div>
@@ -218,7 +218,7 @@ export default function Header() {
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <img
             src={sakaramLogo}
-            alt="Sarkam Tours Logo"
+            alt="Sakaram Tours Logo"
             className="h-10 w-auto"
           />
           <button

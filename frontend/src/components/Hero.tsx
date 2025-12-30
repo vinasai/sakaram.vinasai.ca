@@ -102,7 +102,7 @@ export default function Hero() {
 
           <p className="text-lg md:text-2xl mb-10 text-gray-200 max-w-3xl mx-auto leading-relaxed" style={{ animationDelay: '0.4s' }}>
             Embark on an unforgettable journey through ancient temples, pristine beaches,
-            and lush tea plantations with <span className="font-semibold text-white">Sarkam Tours</span>
+            and lush tea plantations with <span className="font-semibold text-white">Sakaram Tours</span>
           </p>
 
           <div className="flex flex-wrap justify-center gap-6 mb-10">
