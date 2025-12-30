@@ -15,6 +15,7 @@ import {
   updateTour,
   uploadTourImage,
 } from '../api/client';
+import RichTextEditor from './RichTextEditor';
 
 type Tour = {
   id: string;
@@ -1057,9 +1058,9 @@ export default function TourManager() {
                     <div>
                       <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-2">
                         <span>
-                          Location <span className="text-red-500">*</span>
+                          Location (City) <span className="text-red-500">*</span>
                         </span>
-                        <span className="text-xs text-gray-400">{form.location.length}/{MAX_TEXT_LENGTH}</span>
+                        <span className="text-xs text-gray-400">{form.location.length}/{15}</span>
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
@@ -1068,7 +1069,7 @@ export default function TourManager() {
                         <input
                           value={form.location}
                           onChange={(e) => setForm({ ...form, location: e.target.value })}
-                          maxLength={MAX_TEXT_LENGTH}
+                          maxLength={15}
                           className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="e.g., Paris, France"
                           required
@@ -1185,15 +1186,12 @@ export default function TourManager() {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Description <span className="text-red-500">*</span>
+                      Description (Rich Text) <span className="text-red-500">*</span>
                     </label>
-                    <textarea
+                    <RichTextEditor
                       value={form.description}
-                      onChange={(e) => setForm({ ...form, description: e.target.value })}
-                      className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                      placeholder="Describe your tour experience..."
-                      rows={4}
-                      required
+                      onChange={(value) => setForm({ ...form, description: value })}
+                      placeholder="Write a detailed tour description with formatting..."
                     />
                   </div>
                 </div>

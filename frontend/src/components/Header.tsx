@@ -27,6 +27,13 @@ export default function Header() {
         const section = hash.substring(1); // Remove '#'
         if (['tours', 'deals', 'about', 'services', 'contact'].includes(section)) {
           setActiveItem(section);
+          // Scroll to section after a brief delay to ensure DOM is ready
+          setTimeout(() => {
+            const element = document.getElementById(section);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100);
         } else {
           setActiveItem('home');
         }
@@ -38,6 +45,8 @@ export default function Header() {
       const section = path.substring(1);
       if (['tours', 'deals', 'about', 'services', 'contact'].includes(section)) {
         setActiveItem(section);
+        // Scroll to top when landing on these pages
+        window.scrollTo(0, 0);
       } else {
         setActiveItem('');
       }
@@ -83,8 +92,7 @@ export default function Header() {
     if (id === 'contact' || id === 'about' || id === 'services') {
       const targetPath = `/${id}`;
       if (typeof window !== 'undefined' && window.location.pathname === targetPath) {
-        const element = document.getElementById(id);
-        if (element) element.scrollIntoView({ behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (typeof window !== 'undefined') {
         window.location.href = targetPath;
       }
