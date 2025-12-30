@@ -41,6 +41,9 @@ type TourDetails = {
   imageIds: string[];
 };
 
+const MAX_TEXT_LENGTH = 80;
+const DURATION_REGEX = /^[1-9]\d*(?:\s*-\s*[1-9]\d*)?\s*(hour|hours)$/i;
+
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -158,6 +161,27 @@ const CalendarIcon = () => (
   </svg>
 );
 
+// Error Modal Component
+const ErrorModal = ({ message, onClose }: { message: string, onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+    <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
+      <div className="flex items-center gap-3 text-red-600 mb-4">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h3 className="text-lg font-bold">Error</h3>
+      </div>
+      <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+      <button
+        onClick={onClose}
+        className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 rounded-lg transition-colors"
+      >
+        Dismiss
+      </button>
+    </div>
+  </div>
+);
+
 // Skeleton grid for tours
 function TourCardSkeletonGrid({ count = 6 }: { count?: number }) {
   return (
@@ -191,6 +215,7 @@ function TourCardSkeletonGrid({ count = 6 }: { count?: number }) {
 export default function TourManager() {
   const [items, setItems] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Tour | null>(null);
   const [editingDetails, setEditingDetails] = useState<TourDetails | null>(null);
@@ -226,10 +251,10 @@ export default function TourManager() {
   const [currentActivity, setCurrentActivity] = useState('');
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
 
-  const [errorModalMessage, setErrorModalMessage] = useState('');
-
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+
+  const isValidDuration = (value: string) => DURATION_REGEX.test(value.trim());
 
   const handlePhotoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -358,9 +383,16 @@ export default function TourManager() {
   };
 
   const addIncludedItem = () => {
-    if (!includedInput.trim()) return;
-    setIncludedItems([...includedItems, includedInput.trim()]);
+    const value = includedInput.trim();
+    if (!value) return;
+    if (value.length > MAX_TEXT_LENGTH) {
+      setFormError(`Included items must be ${MAX_TEXT_LENGTH} characters or fewer.`);
+      return;
+    }
+
+    setIncludedItems([...includedItems, value]);
     setIncludedInput('');
+    setFormError('');
   };
 
   const removeIncludedItem = (index: number) => {
@@ -368,9 +400,16 @@ export default function TourManager() {
   };
 
   const addExcludedItem = () => {
-    if (!excludedInput.trim()) return;
-    setExcludedItems([...excludedItems, excludedInput.trim()]);
+    const value = excludedInput.trim();
+    if (!value) return;
+    if (value.length > MAX_TEXT_LENGTH) {
+      setFormError(`Excluded items must be ${MAX_TEXT_LENGTH} characters or fewer.`);
+      return;
+    }
+
+    setExcludedItems([...excludedItems, value]);
     setExcludedInput('');
+    setFormError('');
   };
 
   const removeExcludedItem = (index: number) => {
@@ -470,7 +509,7 @@ export default function TourManager() {
     if (!form.name.trim()) missingFields.push('Tour Name');
     if (!form.location.trim()) missingFields.push('Location');
     if (!form.price || Number(form.price) <= 0) missingFields.push('Price');
-    if (!form.duration || Number.parseInt(form.duration, 10) <= 0) missingFields.push('Duration');
+    if (!form.duration.trim() || !isValidDuration(form.duration)) missingFields.push('Duration (e.g., 3-5 hours)');
     if (!form.tagline.trim()) missingFields.push('Tagline');
     if (!form.description.trim()) missingFields.push('Description');
 
@@ -479,7 +518,12 @@ export default function TourManager() {
 
     if (missingFields.length > 0) {
       setFormError('');
-      setErrorModalMessage(`Please provide the following mandatory fields:\n\n• ${missingFields.join('\n• ')}`);
+      setError(`Please provide the following mandatory fields:\n\n• ${missingFields.join('\n• ')}`);
+      return;
+    }
+
+    if (form.name.trim().length > MAX_TEXT_LENGTH || form.location.trim().length > MAX_TEXT_LENGTH) {
+      setError(`Tour name and location must be ${MAX_TEXT_LENGTH} characters or fewer.`);
       return;
     }
 
@@ -491,7 +535,7 @@ export default function TourManager() {
         name: form.name,
         location: form.location,
         price: Number(form.price) || 0,
-        duration: Number.parseInt(form.duration, 10) || 1,
+        duration: form.duration.trim(),
         rating: safeRating,
         reviewsCount: form.reviews ? Number(form.reviews) : 0,
         isHotDeal: !!form.popular,
@@ -577,7 +621,7 @@ export default function TourManager() {
       }
 
       setFormError('');
-      setErrorModalMessage(friendly);
+      setError(friendly);
     } finally {
       setIsSaving(false);
     }
@@ -677,7 +721,7 @@ export default function TourManager() {
     if (!form.name.trim()) missingFields.push('Tour Name');
     if (!form.location.trim()) missingFields.push('Location');
     if (!form.price || Number(form.price) <= 0) missingFields.push('Price');
-    if (!form.duration || Number.parseInt(form.duration, 10) <= 0) missingFields.push('Duration');
+    if (!form.duration.trim() || !isValidDuration(form.duration)) missingFields.push('Duration (e.g., 3-5 hours)');
     if (!form.tagline.trim()) missingFields.push('Tagline');
     if (!form.description.trim()) missingFields.push('Description');
 
@@ -686,7 +730,12 @@ export default function TourManager() {
 
     if (missingFields.length > 0) {
       setFormError('');
-      setErrorModalMessage(`Please provide the following mandatory fields:\n\n• ${missingFields.join('\n• ')}`);
+      setError(`Please provide the following mandatory fields:\n\n• ${missingFields.join('\n• ')}`);
+      return;
+    }
+
+    if (form.name.trim().length > MAX_TEXT_LENGTH || form.location.trim().length > MAX_TEXT_LENGTH) {
+      setError(`Tour name and location must be ${MAX_TEXT_LENGTH} characters or fewer.`);
       return;
     }
 
@@ -698,7 +747,7 @@ export default function TourManager() {
         name: form.name,
         location: form.location,
         price: Number(form.price) || 0,
-        duration: Number.parseInt(form.duration, 10) || 1,
+        duration: form.duration.trim(),
         rating: safeRating,
         reviewsCount: form.reviews ? Number(form.reviews) : 0,
         isHotDeal: !!form.popular,
@@ -790,7 +839,7 @@ export default function TourManager() {
       }
 
       setFormError('');
-      setErrorModalMessage(friendly);
+      setError(friendly);
     } finally {
       setIsSaving(false);
     }
@@ -802,7 +851,7 @@ export default function TourManager() {
     });
 
     setShowModal(false);
-    setErrorModalMessage('');
+    setError(null);
     setEditing(null);
     setEditingDetails(null);
     setForm({
@@ -842,20 +891,22 @@ export default function TourManager() {
   };
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl mx-auto">
+      {error && <ErrorModal message={error} onClose={() => setError(null)} />}
+      
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-
-          <p className="text-sm text-gray-600 mt-1">Manage your tour packages and experiences - {items.length}</p>
+          <h2 className="text-2xl font-bold text-gray-900">Tours Manager</h2>
+          <p className="text-gray-500 mt-1 text-sm">Manage your tour packages and experiences - {items.length}</p>
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg font-medium"
           type="button"
         >
           <PlusIcon />
-          <span className="font-medium">Add Tour</span>
+          <span>Add Tour</span>
         </button>
       </div>
 
@@ -958,46 +1009,45 @@ export default function TourManager() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
+          <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{editing ? 'Edit Tour' : 'Create New Tour'}</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="text-xl font-bold text-gray-900">{editing ? 'Edit Tour' : 'Create New Tour'}</h3>
+                <p className="text-gray-500 text-sm mt-1">
                   {editing ? 'Update your tour details' : 'Add a new tour package to your collection'}
                 </p>
               </div>
               <button
                 onClick={closeModal}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-xl transition-all shadow-sm"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                 type="button"
               >
                 <CloseIcon />
               </button>
             </div>
 
+            {/* Modal Form */}
             <div className="overflow-y-auto flex-1">
               <form onSubmit={editing ? saveEdit : handleAdd} className="p-8 space-y-8">
                 {/* Basic Information */}
                 <div className="space-y-6">
-                  <div className="flex items-center gap-3 pb-3 border-b-2 border-blue-100">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <MapIcon />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 text-lg">Basic Information</h4>
-                      <p className="text-xs text-gray-500">Essential tour details</p>
-                    </div>
-                  </div>
+                  
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Tour Name <span className="text-red-500">*</span>
+                      <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-2">
+                        <span>
+                          Tour Name <span className="text-red-500">*</span>
+                        </span>
+                        <span className="text-xs text-gray-400">{form.name.length}/{MAX_TEXT_LENGTH}</span>
                       </label>
                       <input
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        maxLength={MAX_TEXT_LENGTH}
                         className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         placeholder="e.g., Paris City Tour"
                         required
@@ -1005,8 +1055,11 @@ export default function TourManager() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Location <span className="text-red-500">*</span>
+                      <label className="flex items-center justify-between text-sm font-semibold text-gray-700 mb-2">
+                        <span>
+                          Location <span className="text-red-500">*</span>
+                        </span>
+                        <span className="text-xs text-gray-400">{form.location.length}/{MAX_TEXT_LENGTH}</span>
                       </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
@@ -1015,6 +1068,7 @@ export default function TourManager() {
                         <input
                           value={form.location}
                           onChange={(e) => setForm({ ...form, location: e.target.value })}
+                          maxLength={MAX_TEXT_LENGTH}
                           className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="e.g., Paris, France"
                           required
@@ -1052,10 +1106,12 @@ export default function TourManager() {
                         <input
                           value={form.duration}
                           onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                          maxLength={MAX_TEXT_LENGTH}
                           className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           placeholder="4-5 hours"
                           required
                         />
+                        <p className="mt-2 text-xs text-gray-500">Use formats like "3-5 hours" or "4 hours"</p>
                       </div>
                     </div>
 
@@ -1084,14 +1140,14 @@ export default function TourManager() {
                     </div>
 
                     <div className="flex items-center gap-6">
-                      <label className="inline-flex items-center cursor-pointer px-4 py-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-all">
+                      <label className="inline-flex items-center cursor-pointer px-4 py-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all">
                         <input
                           type="checkbox"
                           checked={!!form.popular}
                           onChange={(e) => setForm({ ...form, popular: e.target.checked })}
                           className="form-checkbox h-5 w-5 text-amber-600 rounded focus:ring-2 focus:ring-amber-500"
                         />
-                        <span className="ml-3 text-sm font-semibold text-gray-700">🔥 Hot Deal</span>
+                        <span className="ml-3 text-sm font-semibold text-gray-700"> Hot Deal</span>
                       </label>
 
                       <div className="flex-1">
@@ -1145,9 +1201,7 @@ export default function TourManager() {
                 {/* Photos */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-3 border-b-2 border-purple-100">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">
-                      <ImageIcon />
-                    </div>
+                   
                     <div>
                       <h4 className="font-semibold text-gray-900 text-lg">
                         Tour Photos <span className="text-red-500">*</span>
@@ -1158,7 +1212,7 @@ export default function TourManager() {
 
                   <div className="space-y-4">
                     <label className="flex items-center justify-center gap-3 w-full border-3 border-dashed border-purple-300 rounded-xl px-6 py-5 cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all group">
-                      <UploadIcon className="w-6 h-6 text-purple-600 group-hover:scale-110 transition-transform" />
+                      <UploadIcon className="w-6 h-6 text-gray-600 group-hover:scale-110 transition-transform" />
                       <div className="text-center">
                         <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
                           Upload from Device
@@ -1205,7 +1259,7 @@ export default function TourManager() {
                       <button
                         type="button"
                         onClick={addPhotoFromUrl}
-                        className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                        className="px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none  shadow-blue-200 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
                       >
                         Add URL
                       </button>
@@ -1309,7 +1363,7 @@ export default function TourManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 pb-3 border-b-2 border-green-100">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
                         <CheckIcon />
                       </div>
                       <h4 className="font-semibold text-gray-900">What's Included</h4>
@@ -1324,13 +1378,14 @@ export default function TourManager() {
                             addIncludedItem();
                           }
                         }}
+                        maxLength={MAX_TEXT_LENGTH}
                         className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         placeholder="e.g., Professional guide"
                       />
                       <button
                         type="button"
                         onClick={addIncludedItem}
-                        className="px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                        className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
                       >
                         Add
                       </button>
@@ -1357,7 +1412,7 @@ export default function TourManager() {
 
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 pb-3 border-b-2 border-red-100">
-                      <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
                         <XIcon />
                       </div>
                       <h4 className="font-semibold text-gray-900">What's Excluded</h4>
@@ -1372,13 +1427,14 @@ export default function TourManager() {
                             addExcludedItem();
                           }
                         }}
+                        maxLength={MAX_TEXT_LENGTH}
                         className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
                         placeholder="e.g., Flight tickets"
                       />
                       <button
                         type="button"
                         onClick={addExcludedItem}
-                        className="px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
+                        className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-sm whitespace-nowrap"
                       >
                         Add
                       </button>
@@ -1407,9 +1463,7 @@ export default function TourManager() {
                 {/* Itinerary */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-100">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
-                      <CalendarIcon />
-                    </div>
+                    
                     <div>
                       <h4 className="font-semibold text-gray-900 text-lg">Tour Itinerary</h4>
                       <p className="text-xs text-gray-500">Plan activities for each day</p>
@@ -1535,14 +1589,13 @@ export default function TourManager() {
 
                 {/* IMPORTANT: footer submit is below, so no button here */}
               </form>
-            </div>
 
-            {/* Modal Footer - submit button (FIXED) */}
-            <div className="flex gap-4 px-8 py-6 border-t border-gray-200 bg-gray-50">
+              {/* Modal Footer - submit button (FIXED) */}
+            <div className="flex items-center justify-end gap-3 pr-8 pt-2 pb-5 ">
               <button
                 type="button"
                 onClick={closeModal}
-                className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all font-semibold shadow-sm"
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
               >
                 Cancel
               </button>
@@ -1551,7 +1604,7 @@ export default function TourManager() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="px-8 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none shadow-md shadow-blue-200 transition-all disabled:opacity-70 disabled:shadow-none"
                 onClick={() => {
                   if (isSaving) return;
                   const formEl = document.querySelector('form');
@@ -1567,36 +1620,13 @@ export default function TourManager() {
                 {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Tour'}
               </button>
             </div>
+            </div>
+
+            
           </div>
         </div>
       )}
 
-      {errorModalMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 text-red-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5.58 19h12.84c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.85 16c-.77 1.33.19 3 1.73 3z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h4 className="text-lg font-semibold text-gray-900">Unable to save tour</h4>
-                <p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{errorModalMessage}</p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setErrorModalMessage('')}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

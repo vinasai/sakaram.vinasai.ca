@@ -428,17 +428,71 @@ function StatusModal({ type, title, message, onClose }: { type: 'success' | 'err
 
 // Booking Modal Component
 function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const phoneFormats: Record<string, { groups: number[]; max: number; placeholder: string }> = {
+    '+94': { groups: [2, 3, 4], max: 9, placeholder: '71 993 8765' },
+    '+1': { groups: [3, 3, 4], max: 10, placeholder: '415 555 2671' },
+    '+61': { groups: [3, 3, 3], max: 9, placeholder: '412 345 678' },
+    '+44': { groups: [3, 3, 4], max: 10, placeholder: '712 345 6789' },
+  };
+
+  const formatPhone = (digits: string, code: string) => {
+    const cfg = phoneFormats[code];
+    if (!cfg) return digits;
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const len of cfg.groups) {
+      if (cursor >= digits.length) break;
+      parts.push(digits.slice(cursor, cursor + len));
+      cursor += len;
+    }
+    return parts.filter(Boolean).join(' ');
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const trimmedName = form.name.trim();
+    const phone = form.phone.trim();
+    const email = form.email.trim();
+    const hasLeadingSpace = /^\s/.test(form.name);
+    const phoneDigitsOnly = /^[0-9]+$/.test(phone);
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const hasValidDate = form.startDate && form.startDate >= todayStr;
+    const phoneCfg = phoneFormats[form.countryCode];
+    const phoneLengthOk = phoneCfg ? phone.length === phoneCfg.max : phone.length > 0;
+
+    if (!hasValidDate) {
+      onShowStatus({ open: true, type: 'error', title: 'Invalid Date', message: 'Start date must be today or a future date.' });
+      return;
+    }
+
+    if (!trimmedName || trimmedName.length > 100 || hasLeadingSpace) {
+      onShowStatus({ open: true, type: 'error', title: 'Invalid Name', message: 'Full name must be 1-100 characters with no leading spaces.' });
+      return;
+    }
+
+    if (!phone || !phoneDigitsOnly || !phoneLengthOk) {
+      const expected = phoneCfg ? `${phoneCfg.max} digits` : 'digits only';
+      onShowStatus({ open: true, type: 'error', title: 'Invalid Phone', message: `Phone number must contain ${expected} for the selected country.` });
+      return;
+    }
+
+    if (!emailValid) {
+      onShowStatus({ open: true, type: 'error', title: 'Invalid Email', message: 'Please enter a valid email address.' });
+      return;
+    }
+
     try {
       await createTripRequest({
         tourId: tour.id,
         startDate: form.startDate,
         travellers: Number(form.travellers) || 1,
         accommodationType: form.accommodation,
-        fullName: form.name,
-        phone: `${form.countryCode} ${form.phone}`.trim(),
-        email: form.email,
+        fullName: trimmedName,
+        phone: `${form.countryCode} ${phone}`.trim(),
+        email,
       });
       // Show success modal
       onClose(); // Close booking modal first
@@ -480,7 +534,14 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
           <div className="grid grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Start date</label>
-              <input required type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" />
+              <input
+                required
+                type="date"
+                min={todayStr}
+                value={form.startDate}
+                onChange={e => setForm({ ...form, startDate: e.target.value })}
+                className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Travellers</label>
@@ -506,7 +567,17 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
 
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Full Name</label>
-            <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" placeholder="John Doe" />
+            <input
+              required
+              value={form.name}
+              maxLength={100}
+              onChange={e => {
+                const sanitized = e.target.value.replace(/^\s+/, '');
+                setForm({ ...form, name: sanitized });
+              }}
+              className="w-full bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all"
+              placeholder="John Doe"
+            />
           </div>
 
           <div>
@@ -514,7 +585,12 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
             <div className="flex gap-3">
               <select
                 value={form.countryCode}
-                onChange={e => setForm({ ...form, countryCode: e.target.value })}
+                onChange={e => {
+                  const code = e.target.value;
+                  const cfg = phoneFormats[code];
+                  const trimmed = cfg ? form.phone.slice(0, cfg.max) : form.phone;
+                  setForm({ ...form, countryCode: code, phone: trimmed });
+                }}
                 className="bg-gray-50 border border-gray-200 px-3 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none w-28 text-sm"
               >
                 <option value="+94">🇱🇰 +94</option>
@@ -523,7 +599,20 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
                 <option value="+61">🇦🇺 +61</option>
                 {/* Add other options as needed */}
               </select>
-              <input required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="flex-1 bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all" placeholder="76 123 4567" />
+              <input
+                required
+                inputMode="numeric"
+                pattern="[0-9 ]*"
+                value={formatPhone(form.phone, form.countryCode)}
+                onChange={e => {
+                  const cfg = phoneFormats[form.countryCode];
+                  const digitsOnly = e.target.value.replace(/\D/g, '');
+                  const limited = cfg ? digitsOnly.slice(0, cfg.max) : digitsOnly;
+                  setForm({ ...form, phone: limited });
+                }}
+                className="flex-1 bg-gray-50 border border-gray-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white outline-none transition-all"
+                placeholder={phoneFormats[form.countryCode]?.placeholder || 'Enter phone'}
+              />
             </div>
           </div>
 

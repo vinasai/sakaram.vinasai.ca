@@ -16,21 +16,75 @@ export default function DealRequestModal({ deal, onClose }: DealRequestModalProp
         name: '',
         email: '',
         phone: '',
+        countryCode: '+94',
     });
     const [isLoading, setIsLoading] = useState(false);
     const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
 
+    const phoneFormats: Record<string, { groups: number[]; max: number; placeholder: string }> = {
+        '+94': { groups: [2, 3, 4], max: 9, placeholder: '71 993 8765' },
+        '+1': { groups: [3, 3, 4], max: 10, placeholder: '415 555 2671' },
+        '+61': { groups: [3, 3, 3], max: 9, placeholder: '412 345 678' },
+        '+44': { groups: [3, 3, 4], max: 10, placeholder: '712 345 6789' },
+    };
+
+    const formatPhone = (digits: string, code: string) => {
+        const cfg = phoneFormats[code];
+        if (!cfg) return digits;
+        const parts: string[] = [];
+        let cursor = 0;
+        for (const len of cfg.groups) {
+            if (cursor >= digits.length) break;
+            parts.push(digits.slice(cursor, cursor + len));
+            cursor += len;
+        }
+        return parts.filter(Boolean).join(' ');
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
         setStatus('idle');
         setErrorMessage('');
+
+        const trimmedName = formData.name.trim();
+        const trimmedEmail = formData.email.trim();
+        const phoneDigits = formData.phone.trim();
+        const hasLeadingSpace = /^\s/.test(formData.name);
+        const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+        const phoneDigitsOnly = /^[0-9]+$/.test(phoneDigits);
+        const phoneCfg = phoneFormats[formData.countryCode];
+        const phoneLengthOk = phoneCfg ? phoneDigits.length === phoneCfg.max : phoneDigits.length > 0;
+
+        if (!trimmedName || trimmedName.length > 100 || hasLeadingSpace) {
+            setStatus('error');
+            setErrorMessage('Full name must be 1-100 characters with no leading spaces.');
+            return;
+        }
+
+        if (!emailValid) {
+            setStatus('error');
+            setErrorMessage('Please enter a valid email address.');
+            return;
+        }
+
+        if (!phoneDigits || !phoneDigitsOnly || !phoneLengthOk) {
+            const expected = phoneCfg ? `${phoneCfg.max} digits` : 'digits only';
+            setStatus('error');
+            setErrorMessage(`Phone number must contain ${expected} for the selected country.`);
+            return;
+        }
+
+        setIsLoading(true);
 
         try {
             await createDealRequest({
                 dealId: deal.id,
-                user: formData,
+                user: {
+                    name: trimmedName,
+                    email: trimmedEmail,
+                    phone: `${formData.countryCode} ${phoneDigits}`.trim(),
+                },
             });
             setStatus('success');
         } catch (error: any) {
@@ -93,12 +147,19 @@ export default function DealRequestModal({ deal, onClose }: DealRequestModalProp
                             )}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
+                                    <span>Full Name</span>
+                                    <span className="text-xs text-gray-400">{formData.name.length}/100</span>
+                                </label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    maxLength={100}
+                                    onChange={(e) => {
+                                        const sanitized = e.target.value.replace(/^\s+/, '');
+                                        setFormData({ ...formData, name: sanitized });
+                                    }}
                                     className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                                     placeholder="Your Name"
                                 />
@@ -106,14 +167,38 @@ export default function DealRequestModal({ deal, onClose }: DealRequestModalProp
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                <input
-                                    type="tel"
-                                    required
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                                    placeholder="Your Phone Number"
-                                />
+                                <div className="flex gap-3">
+                                    <select
+                                        value={formData.countryCode}
+                                        onChange={(e) => {
+                                            const code = e.target.value;
+                                            const cfg = phoneFormats[code];
+                                            const trimmed = cfg ? formData.phone.slice(0, cfg.max) : formData.phone;
+                                            setFormData({ ...formData, countryCode: code, phone: trimmed });
+                                        }}
+                                        className="bg-gray-50 border border-gray-200 px-3 py-2.5 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none w-28 text-sm"
+                                    >
+                                        <option value="+94">🇱🇰 +94</option>
+                                        <option value="+1">🇺🇸 +1</option>
+                                        <option value="+44">🇬🇧 +44</option>
+                                        <option value="+61">🇦🇺 +61</option>
+                                    </select>
+                                    <input
+                                        type="tel"
+                                        required
+                                        inputMode="numeric"
+                                        pattern="[0-9 ]*"
+                                        value={formatPhone(formData.phone, formData.countryCode)}
+                                        onChange={(e) => {
+                                            const cfg = phoneFormats[formData.countryCode];
+                                            const digitsOnly = e.target.value.replace(/\D/g, '');
+                                            const limited = cfg ? digitsOnly.slice(0, cfg.max) : digitsOnly;
+                                            setFormData({ ...formData, phone: limited });
+                                        }}
+                                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                                        placeholder={phoneFormats[formData.countryCode]?.placeholder || 'Phone number'}
+                                    />
+                                </div>
                             </div>
 
                             <div>

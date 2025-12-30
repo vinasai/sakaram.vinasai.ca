@@ -1,8 +1,29 @@
-import { Mail, Phone, Send, MessageCircle, MapPin, Clock } from 'lucide-react';
+import { Mail, Phone, Send, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { createInquiry } from '../api/client';
 
 export default function Contact() {
+  const phoneFormats: Record<string, { groups: number[]; max: number; placeholder: string }> = {
+    '+94': { groups: [2, 3, 4], max: 9, placeholder: '71 993 8765' },
+    '+1': { groups: [3, 3, 4], max: 10, placeholder: '415 555 2671' },
+    '+61': { groups: [3, 3, 3], max: 9, placeholder: '412 345 678' },
+    '+44': { groups: [3, 3, 4], max: 10, placeholder: '712 345 6789' },
+  };
+  const DEFAULT_PHONE_MAX = 15;
+
+  const formatPhone = (digits: string, code: string) => {
+    const cfg = phoneFormats[code];
+    if (!cfg) return digits;
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const len of cfg.groups) {
+      if (cursor >= digits.length) break;
+      parts.push(digits.slice(cursor, cursor + len));
+      cursor += len;
+    }
+    return parts.filter(Boolean).join(' ');
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -11,32 +32,101 @@ export default function Contact() {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusModal, setStatusModal] = useState<{ open: boolean; type: 'success' | 'error'; title: string; message: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const trimmedName = formData.name.trim();
+    const trimmedEmail = formData.email.trim();
+    const trimmedMessage = formData.message.trim();
+    const phoneDigits = formData.phone.trim();
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    const phoneDigitsOnly = /^[0-9]+$/.test(phoneDigits);
+    const phoneCfg = phoneFormats[formData.countryCode];
+    const phoneLengthOk = phoneCfg
+      ? phoneDigits.length === phoneCfg.max
+      : phoneDigits.length >= 6 && phoneDigits.length <= DEFAULT_PHONE_MAX;
+
+    const showError = (title: string, message: string) => {
+      setStatusModal({ open: true, type: 'error', title, message });
+      setIsSubmitting(false);
+    };
+
+    if (!trimmedName || trimmedName.length > 100) {
+      showError('Invalid Name', 'Full name must be between 1 and 100 characters.');
+      return;
+    }
+
+    if (!emailValid) {
+      showError('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    if (!phoneDigits || !phoneDigitsOnly || !phoneLengthOk) {
+      const expected = phoneCfg ? `${phoneCfg.max} digits` : '6-15 digits';
+      showError('Invalid Phone', `Phone number must contain ${expected} and match the selected country format.`);
+      return;
+    }
+
+    if (!trimmedMessage || trimmedMessage.length > 400) {
+      showError('Invalid Message', 'Message must be between 1 and 400 characters.');
+      return;
+    }
+
     try {
       await createInquiry({
-        fullName: formData.name,
-        email: formData.email,
-        phone: `${formData.countryCode} ${formData.phone}`.trim(),
-        message: formData.message,
+        fullName: trimmedName,
+        email: trimmedEmail,
+        phone: `${formData.countryCode} ${phoneDigits}`.trim(),
+        message: trimmedMessage,
       });
       setFormData({ name: '', email: '', phone: '', countryCode: '+94', message: '' });
-      alert('Message sent — thank you!');
+      setStatusModal({
+        open: true,
+        type: 'success',
+        title: 'Message Sent',
+        message: 'Thank you for reaching out! We will get back to you shortly.',
+      });
     } catch (err) {
       console.error('Failed to send inquiry', err);
-      alert('Unable to send message. Please try again.');
+      setStatusModal({
+        open: true,
+        type: 'error',
+        title: 'Submission Failed',
+        message: 'Unable to send message. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const sanitized = e.target.value.replace(/^\s+/, '').slice(0, 100);
+    setFormData({ ...formData, name: sanitized });
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, email: e.target.value });
+  };
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData({ ...formData, message: e.target.value.slice(0, 400) });
+  };
+
+  const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    const cfg = phoneFormats[code];
+    const limited = cfg ? formData.phone.slice(0, cfg.max) : formData.phone.slice(0, DEFAULT_PHONE_MAX);
+    setFormData({ ...formData, countryCode: code, phone: limited });
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cfg = phoneFormats[formData.countryCode];
+    const digitsOnly = e.target.value.replace(/\D/g, '');
+    const limited = cfg ? digitsOnly.slice(0, cfg.max) : digitsOnly.slice(0, DEFAULT_PHONE_MAX);
+    setFormData({ ...formData, phone: limited });
   };
 
   return (
@@ -83,8 +173,9 @@ export default function Contact() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="transform transition-all duration-300 hover:translate-x-1">
-                    <label htmlFor="name" className="block text-gray-700 font-semibold mb-1.5 text-sm">
-                      Full Name *
+                    <label htmlFor="name" className="flex items-center justify-between text-gray-700 font-semibold mb-1.5 text-sm">
+                      <span>Full Name *</span>
+                      <span className="text-xs text-gray-400">{formData.name.length}/100</span>
                     </label>
                     <input
                       type="text"
@@ -92,7 +183,8 @@ export default function Contact() {
                       name="name"
                       required
                       value={formData.name}
-                      onChange={handleChange}
+                      onChange={handleNameChange}
+                      maxLength={100}
                       className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
                       placeholder="John Doe"
                     />
@@ -108,7 +200,7 @@ export default function Contact() {
                       name="email"
                       required
                       value={formData.email}
-                      onChange={handleChange}
+                      onChange={handleEmailChange}
                       className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
                       placeholder="john@example.com"
                     />
@@ -122,7 +214,7 @@ export default function Contact() {
                   <div className="flex gap-2">
                     <select
                       value={formData.countryCode}
-                      onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                      onChange={handleCountryChange}
                       className="w-32 px-2 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
                     >
                       <option value="+93">🇦🇫 +93</option>
@@ -182,25 +274,29 @@ export default function Contact() {
                       id="phone"
                       name="phone"
                       required
-                      value={formData.phone}
-                      onChange={handleChange}
+                      inputMode="numeric"
+                      pattern="[0-9 ]*"
+                      value={formatPhone(formData.phone, formData.countryCode)}
+                      onChange={handlePhoneChange}
                       className="flex-1 px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
-                      placeholder="76 046 5855"
+                      placeholder={phoneFormats[formData.countryCode]?.placeholder || 'Phone number'}
                     />
                   </div>
                 </div>
 
                 <div className="transform transition-all duration-300 hover:translate-x-1">
-                  <label htmlFor="message" className="block text-gray-700 font-semibold mb-1.5 text-sm">
-                    Your Message *
+                  <label htmlFor="message" className="flex items-center justify-between text-gray-700 font-semibold mb-1.5 text-sm">
+                    <span>Your Message *</span>
+                    <span className="text-xs text-gray-400">{formData.message.length}/400</span>
                   </label>
                   <textarea
                     id="message"
                     name="message"
                     required
                     value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    onChange={handleMessageChange}
                     rows={4}
+                    maxLength={400}
                     className="w-full px-3.5 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all bg-white text-sm"
                     placeholder="Tell us about your dream trip..."
                   ></textarea>
@@ -245,6 +341,35 @@ export default function Contact() {
           </div>
         </div>
       </div>
+
+      {statusModal?.open && (
+        <StatusModal
+          type={statusModal.type}
+          title={statusModal.title}
+          message={statusModal.message}
+          onClose={() => setStatusModal(null)}
+        />
+      )}
     </section>
+  );
+}
+
+function StatusModal({ type, title, message, onClose }: { type: 'success' | 'error'; title: string; message: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in fade-in zoom-in">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+          {type === 'success' ? '✓' : '✕'}
+        </div>
+        <h3 className="text-xl font-bold text-center text-gray-900 mb-2">{title}</h3>
+        <p className="text-gray-600 text-center mb-6 text-sm leading-relaxed">{message}</p>
+        <button
+          onClick={onClose}
+          className={`w-full py-3 rounded-xl font-semibold text-white transition-colors shadow-lg ${type === 'success' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-red-600 hover:bg-red-700 shadow-red-200'}`}
+        >
+          {type === 'success' ? 'Continue' : 'Try Again'}
+        </button>
+      </div>
+    </div>
   );
 }

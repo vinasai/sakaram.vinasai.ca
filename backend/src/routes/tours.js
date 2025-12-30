@@ -51,15 +51,35 @@ router.post(
   "/",
   requireAuth,
   [
-    body("name").trim().notEmpty().withMessage("Tour name is required"),
-    body("location").trim().notEmpty().withMessage("Location is required"),
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("Tour name is required")
+      .isLength({ max: 80 })
+      .withMessage("Tour name must be at most 80 characters"),
+    body("location")
+      .trim()
+      .notEmpty()
+      .withMessage("Location is required")
+      .isLength({ max: 80 })
+      .withMessage("Location must be at most 80 characters"),
     body("price").isFloat({ min: 0 }).withMessage("Price must be a positive number"),
-    body("duration").isInt({ min: 1 }).withMessage("Duration must be at least 1 day/hour"),
+    body("duration")
+      .trim()
+      .notEmpty()
+      .withMessage("Duration is required")
+      .matches(/^[1-9]\d*(?:\s*-\s*[1-9]\d*)?\s*(hour|hours)$/i)
+      .withMessage("Duration must start with a non-zero number and end with 'hour' or 'hours' (e.g., '3-5 hours')"),
     body("rating").optional().isFloat({ min: 0, max: 5 }).withMessage("Rating must be between 0 and 5"),
     body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
     body("description").trim().notEmpty().withMessage("Description is required"),
-    body("tagline").trim().notEmpty().withMessage("Tagline is required").isLength({ max: 80 }).withMessage("Tagline must be less than 80 characters"),
+    body("tagline")
+      .trim()
+      .notEmpty()
+      .withMessage("Tagline is required")
+      .isLength({ max: 80 })
+      .withMessage("Tagline must be less than 80 characters"),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -87,15 +107,39 @@ router.put(
   "/:id",
   requireAuth,
   [
-    body("name").optional().trim().notEmpty().withMessage("Tour name cannot be empty"),
-    body("location").optional().trim().notEmpty().withMessage("Location cannot be empty"),
+    body("name")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Tour name cannot be empty")
+      .isLength({ max: 80 })
+      .withMessage("Tour name must be at most 80 characters"),
+    body("location")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Location cannot be empty")
+      .isLength({ max: 80 })
+      .withMessage("Location must be at most 80 characters"),
     body("price").optional().isFloat({ min: 0 }).withMessage("Price must be a positive number"),
-    body("duration").optional().isInt({ min: 1 }).withMessage("Duration must be at least 1 day/hour"),
+    body("duration")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Duration cannot be empty")
+      .matches(/^[1-9]\d*(?:\s*-\s*[1-9]\d*)?\s*(hour|hours)$/i)
+      .withMessage("Duration must start with a non-zero number and end with 'hour' or 'hours' (e.g., '3-5 hours')"),
     body("rating").optional().isFloat({ min: 0, max: 5 }).withMessage("Rating must be between 0 and 5"),
     body("reviewsCount").optional().isInt({ min: 0 }).withMessage("Reviews count must be a positive number"),
     body("isHotDeal").optional().isBoolean(),
     body("description").optional().trim().notEmpty().withMessage("Description cannot be empty"),
-    body("tagline").optional().trim().notEmpty().withMessage("Tagline cannot be empty").isLength({ max: 80 }).withMessage("Tagline must be less than 80 characters"),
+    body("tagline")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Tagline cannot be empty")
+      .isLength({ max: 80 })
+      .withMessage("Tagline must be less than 80 characters"),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -130,7 +174,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
 router.post(
   "/:id/inclusions",
   requireAuth,
-  [body("description").trim().notEmpty()],
+  [body("description").trim().notEmpty().isLength({ max: 80 }).withMessage("Inclusion must be 80 characters or fewer")],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -150,7 +194,7 @@ router.post(
 router.post(
   "/:id/exclusions",
   requireAuth,
-  [body("description").trim().notEmpty()],
+  [body("description").trim().notEmpty().isLength({ max: 80 }).withMessage("Exclusion must be 80 characters or fewer")],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

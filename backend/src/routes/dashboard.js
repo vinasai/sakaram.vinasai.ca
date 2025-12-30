@@ -24,7 +24,30 @@ router.get("/stats", requireAuth, async (req, res) => {
     Tour.countDocuments(),
     Inquiry.countDocuments(),
     TripRequest.countDocuments(),
-    Tour.aggregate([{ $group: { _id: null, totalDuration: { $sum: "$duration" } } }]),
+    Tour.aggregate([
+      {
+        $project: {
+          durationNumber: {
+            $let: {
+              vars: {
+                match: {
+                  $regexFind: { input: { $toString: "$duration" }, regex: /^(\d+)/ },
+                },
+              },
+              in: {
+                $toInt: {
+                  $ifNull: [
+                    { $arrayElemAt: [{ $ifNull: ["$$match.captures", []] }, 0] },
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+      { $group: { _id: null, totalDuration: { $sum: "$durationNumber" } } },
+    ]),
   ]);
 
   const totalTourDays = tourDurations[0]?.totalDuration || 0;
