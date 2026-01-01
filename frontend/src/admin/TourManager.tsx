@@ -336,42 +336,30 @@ export default function TourManager() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const totalPhotos = photoFiles.length + photoUrls.length;
+    const file = files[0];
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
-    if (totalPhotos + files.length > 10) {
-      setFormError(`You can only add ${10 - totalPhotos} more photo(s). Maximum 10 photos allowed.`);
+    if (!validTypes.includes(file.type)) {
+      setFormError(`Invalid file type: ${file.name}. Please upload JPG, PNG, WEBP, or GIF images.`);
       e.target.value = '';
       return;
     }
 
-    const filesToProcess = Array.from(files);
-    const validFiles: File[] = [];
-    const newPreviewUrls: string[] = [];
-
-    for (const file of filesToProcess) {
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      if (!validTypes.includes(file.type)) {
-        setFormError(`Invalid file type: ${file.name}. Please upload JPG, PNG, WEBP, or GIF images.`);
-        e.target.value = '';
-        return;
-      }
-
-      const maxSize = 10 * 1024 * 1024;
-      if (file.size > maxSize) {
-        setFormError(`File too large: ${file.name}. Maximum size is 10MB.`);
-        e.target.value = '';
-        return;
-      }
-
-      validFiles.push(file);
-      newPreviewUrls.push(URL.createObjectURL(file));
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setFormError(`File too large: ${file.name}. Maximum size is 10MB.`);
+      e.target.value = '';
+      return;
     }
 
-    if (validFiles.length > 0) {
-      setPhotoFiles((prev) => [...prev, ...validFiles]);
-      setPhotoUrls((prev) => [...prev, ...newPreviewUrls]);
-      setFormError('');
-    }
+    // Revoke previous blob URLs if any
+    photoUrls.forEach(url => {
+      if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+    });
+
+    setPhotoFiles([file]);
+    setPhotoUrls([URL.createObjectURL(file)]);
+    setFormError('');
 
     e.target.value = '';
   };
@@ -429,13 +417,13 @@ export default function TourManager() {
       return;
     }
 
-    const totalPhotos = photoFiles.length + photoUrls.length;
-    if (totalPhotos >= 10) {
-      setFormError('Maximum 10 photos allowed per tour.');
-      return;
-    }
+    // Revoke previous blob URLs if any
+    photoUrls.forEach(u => {
+      if (u.startsWith('blob:')) URL.revokeObjectURL(u);
+    });
 
-    setPhotoUrls((prev) => [...prev, url]);
+    setPhotoFiles([]);
+    setPhotoUrls([url]); // Replace existing
     setUrlInput('');
     setFormError('');
   };
@@ -722,8 +710,8 @@ export default function TourManager() {
 
     try {
       const detail = await fetchTourDetails(t.id);
-      const imageUrls =
-        detail.images?.map((img: any) => toMediaUrl(img.imageUrl)).filter(Boolean) || [];
+      const allImages = detail.images?.map((img: any) => toMediaUrl(img.imageUrl)).filter(Boolean) || [];
+      const imageUrls = allImages.slice(0, 1);
 
       setForm({
         name: detail.tour.name,
@@ -1370,7 +1358,7 @@ export default function TourManager() {
                       <h4 className="font-semibold text-gray-900 text-lg">
                         Tour Photos <span className="text-red-500">*</span>
                       </h4>
-                      <p className="text-xs text-gray-500">Add 1-10 photos (at least 1 required)</p>
+                      <p className="text-xs text-gray-500">Add a photo (Required)</p>
                     </div>
                   </div>
 
@@ -1381,12 +1369,11 @@ export default function TourManager() {
                         <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
                           Upload from Device
                         </span>
-                        <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WEBP, GIF up to 10MB (Max 10)</p>
+                        <p className="text-xs text-gray-500 mt-0.5">JPG, PNG, WEBP, GIF up to 10MB</p>
                       </div>
                       <input
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                        multiple
                         onChange={handlePhotoFile}
                         className="hidden"
                       />
@@ -1431,7 +1418,7 @@ export default function TourManager() {
                   </div>
 
                   {(() => {
-                    const totalPhotos = photoFiles.length + photoUrls.length;
+                    const totalPhotos = photoUrls.length;
                     return (
                       totalPhotos > 0 && (
                         <div className="space-y-3">
