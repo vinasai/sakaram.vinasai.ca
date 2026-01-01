@@ -28,8 +28,32 @@ router.post(
     body("startDate").isISO8601(),
     body("travellers").isInt({ min: 1 }),
     body("accommodationType").trim().notEmpty(),
-    body("fullName").trim().notEmpty(),
-    body("email").isEmail(),
+    body("fullName")
+      .trim()
+      .notEmpty()
+      .custom((value) => {
+        if (!/^[a-zA-Z\s]+$/.test(value)) {
+          throw new Error("Name must contain only letters");
+        }
+        return true;
+      }),
+    body("email")
+      .isEmail()
+      .custom((value) => {
+        const allowedDomains = [
+          "gmail.com",
+          "yahoo.com",
+          "outlook.com",
+          "hotmail.com",
+        ];
+        const domain = value.split("@")[1];
+        if (!allowedDomains.includes(domain)) {
+          throw new Error(
+            "Email must be from gmail, yahoo, outlook, or hotmail"
+          );
+        }
+        return true;
+      }),
     body("phone").optional().trim(),
   ],
   async (req, res) => {
