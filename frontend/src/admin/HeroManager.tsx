@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import DeleteModal from './DeleteModal';
 import {
   createHeroBanner,
   deleteHeroBanner,
@@ -120,6 +121,12 @@ export default function HeroManager() {
 
   const [editing, setEditing] = useState<Hero | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null; title: string }>({
+    open: false,
+    id: null,
+    title: ''
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     title: '',
@@ -133,29 +140,29 @@ export default function HeroManager() {
   // Validation helper functions
   const validateTitle = (title: string): string | null => {
     if (!title.trim()) return 'Title is required.';
-    
+
     // Check character restrictions (letters, numbers, spaces only)
     const allowedCharsRegex = /^[a-zA-Z0-9\s]+$/;
     if (!allowedCharsRegex.test(title)) {
       return 'Title can only contain letters, numbers, and spaces.';
     }
-    
+
     // Check character count (max 80 characters)
     if (title.length > 80) {
       return `Title cannot exceed 80 characters. Current: ${title.length} characters.`;
     }
-    
+
     return null;
   };
 
   const validateSubtitle = (subtitle: string): string | null => {
     if (!subtitle.trim()) return null; // Subtitle is optional
-    
+
     // Check character count (max 80 characters)
     if (subtitle.length > 80) {
       return `Subtitle cannot exceed 80 characters. Current: ${subtitle.length} characters.`;
     }
-    
+
     return null;
   };
 
@@ -244,21 +251,21 @@ export default function HeroManager() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate title
     const titleError = validateTitle(form.title);
     if (titleError) {
       setError(titleError);
       return;
     }
-    
+
     // Validate subtitle
     const subtitleError = validateSubtitle(form.subtitle);
     if (subtitleError) {
       setError(subtitleError);
       return;
     }
-    
+
     if (!form.imageFile) {
       setError('Please select an image.');
       return;
@@ -266,7 +273,7 @@ export default function HeroManager() {
 
     setIsSaving(true);
     try {
-      await createHeroBanner({ title: form.title, subtitle: form.subtitle }, form.imageFile);
+      await createHeroBanner({ title: form.title.trim(), subtitle: form.subtitle.trim() }, form.imageFile);
       await loadItems();
       closeModal();
     } catch (err: any) {
@@ -286,14 +293,14 @@ export default function HeroManager() {
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing) return;
-    
+
     // Validate title
     const titleError = validateTitle(form.title);
     if (titleError) {
       setError(titleError);
       return;
     }
-    
+
     // Validate subtitle
     const subtitleError = validateSubtitle(form.subtitle);
     if (subtitleError) {
@@ -303,7 +310,7 @@ export default function HeroManager() {
 
     setIsSaving(true);
     try {
-      await updateHeroBanner(editing.id, { title: form.title, subtitle: form.subtitle }, form.imageFile);
+      await updateHeroBanner(editing.id, { title: form.title.trim(), subtitle: form.subtitle.trim() }, form.imageFile);
       await loadItems();
       closeModal();
     } catch (err: any) {
@@ -320,14 +327,22 @@ export default function HeroManager() {
     }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Delete this banner?')) return;
+  const remove = (item: Hero) => {
+    setDeleteModal({ open: true, id: item.id, title: item.title });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    setIsDeleting(true);
     try {
-      await deleteHeroBanner(id);
-      setItems((s) => s.filter((i) => i.id !== id));
+      await deleteHeroBanner(deleteModal.id);
+      setItems((s) => s.filter((i) => i.id !== deleteModal.id));
+      setDeleteModal({ open: false, id: null, title: '' });
     } catch (err: any) {
       console.error('Failed to delete banner', err);
       setError('Unable to delete banner.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -412,7 +427,7 @@ export default function HeroManager() {
                       <EditIcon />
                     </button>
                     <button
-                      onClick={() => remove(i.id)}
+                      onClick={() => remove(i)}
                       className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete Banner"
                       type="button"
@@ -558,6 +573,15 @@ export default function HeroManager() {
           </div>
         </div>
       )}
+      <DeleteModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, title: '' })}
+        onConfirm={confirmDelete}
+        title="Delete Banner"
+        message="Are you sure you want to delete this banner? This action cannot be undone."
+        itemTitle={deleteModal.title}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

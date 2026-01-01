@@ -173,9 +173,11 @@ export default function DealRequestsManager() {
     const [requests, setRequests] = useState<DealRequest[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
     const loadRequests = async () => {
         try {
-            const res = await fetchDealRequests();
+            const res = await fetchDealRequests({ sortOrder });
             setRequests(res);
         } catch (error) {
             console.error('Failed to load deal requests', error);
@@ -197,7 +199,7 @@ export default function DealRequestsManager() {
 
     useEffect(() => {
         loadRequests();
-    }, []);
+    }, [sortOrder]);
 
     const formatDate = (dateString: string) => {
         const d = new Date(dateString);
@@ -208,7 +210,17 @@ export default function DealRequestsManager() {
         <div>
             <div className="mb-5">
 
-                <p className="text-gray-500 mt-1 text-sm">Manage the Deals - {requests.length}</p>
+                <div className="flex items-center justify-between">
+                    <p className="text-gray-500 mt-1 text-sm">Manage the Deals - {requests.length}</p>
+                    <select
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                        className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="desc">Latest First</option>
+                        <option value="asc">Oldest First</option>
+                    </select>
+                </div>
             </div>
 
             {loading ? (

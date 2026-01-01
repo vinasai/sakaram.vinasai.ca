@@ -179,10 +179,12 @@ export default function TripRequests() {
   const [items, setItems] = useState<TripRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
   const load = async () => {
     setLoading(true);
     try {
-      const [res, tours] = await Promise.all([fetchTripRequests(), fetchTours()]);
+      const [res, tours] = await Promise.all([fetchTripRequests({ sortOrder }), fetchTours()]);
       const tourMap = new Map((tours.items || []).map((tour: any) => [tour._id, tour.name]));
       const mapped = (res.items || []).map((item: any) => ({
         id: item._id,
@@ -208,7 +210,7 @@ export default function TripRequests() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [sortOrder]);
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
@@ -228,8 +230,16 @@ export default function TripRequests() {
           <p className="text-sm text-gray-600 mt-1">Booking requests from customers ({items.length})</p>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="desc">Latest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
           <button
-            onClick={load}
+            onClick={() => load()}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-60"
             type="button"

@@ -221,10 +221,10 @@ export default function ExploreTour() {
                   <Info className="text-emerald-600" size={24} />
                   About this trip
                 </h3>
-                <div 
+                <div
                   className="prose prose-lg text-gray-600 leading-relaxed max-w-none rich-text-content"
-                  dangerouslySetInnerHTML={{ 
-                    __html: tour.description || "Experience the beauty of this location with our comprehensive guided tour. Perfect for travelers seeking adventure and culture." 
+                  dangerouslySetInnerHTML={{
+                    __html: tour.description || "Experience the beauty of this location with our comprehensive guided tour. Perfect for travelers seeking adventure and culture."
                   }}
                 />
 
@@ -508,8 +508,8 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
       return;
     }
 
-    if (!trimmedName || trimmedName.length > 100 || hasLeadingSpace) {
-      onShowStatus({ open: true, type: 'error', title: 'Invalid Name', message: 'Full name must be 1-100 characters with no leading spaces.' });
+    if (!trimmedName || trimmedName.length > 100 || hasLeadingSpace || !/^[a-zA-Z\s]+$/.test(trimmedName)) {
+      onShowStatus({ open: true, type: 'error', title: 'Invalid Name', message: 'Name must contain only letters and spaces (max 100 chars).' });
       return;
     }
 
@@ -519,8 +519,10 @@ function BookingModal({ tour, form, setForm, onClose, onShowStatus }: any) {
       return;
     }
 
-    if (!emailValid) {
-      onShowStatus({ open: true, type: 'error', title: 'Invalid Email', message: 'Please enter a valid email address.' });
+    const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'];
+    const emailDomain = email.split('@')[1];
+    if (!emailValid || !allowedDomains.includes(emailDomain)) {
+      onShowStatus({ open: true, type: 'error', title: 'Invalid Email', message: 'Email must be a valid address from Gmail, Yahoo, Outlook, or Hotmail.' });
       return;
     }
 

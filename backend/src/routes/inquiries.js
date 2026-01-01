@@ -19,8 +19,32 @@ router.get("/", requireAuth, async (req, res) => {
 router.post(
   "/",
   [
-    body("fullName").trim().notEmpty(),
-    body("email").isEmail(),
+    body("fullName")
+      .trim()
+      .notEmpty()
+      .custom((value) => {
+        if (!/^[a-zA-Z\s]+$/.test(value)) {
+          throw new Error("Name must contain only letters");
+        }
+        return true;
+      }),
+    body("email")
+      .isEmail()
+      .custom((value) => {
+        const allowedDomains = [
+          "gmail.com",
+          "yahoo.com",
+          "outlook.com",
+          "hotmail.com",
+        ];
+        const domain = value.split("@")[1];
+        if (!allowedDomains.includes(domain)) {
+          throw new Error(
+            "Email must be from gmail, yahoo, outlook, or hotmail"
+          );
+        }
+        return true;
+      }),
     body("message").trim().notEmpty(),
     body("phone").optional().trim(),
   ],

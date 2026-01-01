@@ -54,13 +54,16 @@ export default function Contact() {
       setIsSubmitting(false);
     };
 
-    if (!trimmedName || trimmedName.length > 100) {
-      showError('Invalid Name', 'Full name must be between 1 and 100 characters.');
+    if (!trimmedName || trimmedName.length > 100 || !/^[a-zA-Z\s]+$/.test(trimmedName)) {
+      showError('Invalid Name', 'Full name must be letters only and max 100 characters.');
       return;
     }
 
-    if (!emailValid) {
-      showError('Invalid Email', 'Please enter a valid email address.');
+    const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'];
+    const emailDomain = trimmedEmail.split('@')[1];
+
+    if (!emailValid || !allowedDomains.includes(emailDomain)) {
+      showError('Invalid Email', 'Email must be from gmail, yahoo, outlook, or hotmail.');
       return;
     }
 

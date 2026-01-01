@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import DeleteModal from './DeleteModal';
 import { createDeal, deleteDeal, fetchDeals, toMediaUrl, updateDeal } from '../api/client';
 import LoadingState from '../components/LoadingState';
 
@@ -98,6 +99,12 @@ export default function DealsManager() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Deal | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null; title: string }>({
+    open: false,
+    id: null,
+    title: ''
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     title: '',
@@ -459,14 +466,22 @@ export default function DealsManager() {
     setDurationNights('');
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Delete this deal?')) return;
+  const remove = (deal: Deal) => {
+    setDeleteModal({ open: true, id: deal.id, title: deal.title });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    setIsDeleting(true);
     try {
-      await deleteDeal(id);
-      setItems((s) => s.filter(i => i.id !== id));
+      await deleteDeal(deleteModal.id);
+      setItems((s) => s.filter(i => i.id !== deleteModal.id));
+      setDeleteModal({ open: false, id: null, title: '' });
     } catch (err: any) {
       console.error('Failed to delete deal', err);
       setError('Unable to delete deal.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -475,6 +490,15 @@ export default function DealsManager() {
   return (
     <div className="max-w-7xl mx-auto">
       {error && <ErrorModal message={error} onClose={() => setError(null)} />}
+      <DeleteModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, title: '' })}
+        onConfirm={confirmDelete}
+        title="Delete Deal"
+        message="Are you sure you want to delete this deal? This action cannot be undone."
+        itemTitle={deleteModal.title}
+        isDeleting={isDeleting}
+      />
 
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -538,7 +562,7 @@ export default function DealsManager() {
                     <span>Edit</span>
                   </button>
                   <button
-                    onClick={() => remove(i.id)}
+                    onClick={() => remove(i)}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
                   >
                     <TrashIcon />
@@ -554,7 +578,7 @@ export default function DealsManager() {
       {showModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
           <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <div>
@@ -622,7 +646,7 @@ export default function DealsManager() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Duration <span className="text-red-500">*</span>
                     </label>
-                    
+
                     {/* Duration Type Selector */}
                     <div className="mb-3">
                       <select
@@ -683,7 +707,7 @@ export default function DealsManager() {
                         required
                       />
                     )}
-                    
+
                     <p className="mt-2 text-xs text-gray-500">
                       {durationType === 'days' && 'Enter number of days (e.g., 3 Days)'}
                       {durationType === 'nights' && 'Enter number of nights (e.g., 2 Nights)'}

@@ -9,6 +9,18 @@ exports.createDealRequest = async (req, res) => {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
+        // Validate Name (letters and spaces only)
+        if (!/^[a-zA-Z\s]+$/.test(user.name)) {
+            return res.status(400).json({ message: 'Name must contain only letters' });
+        }
+
+        // Validate Email (specific domains only)
+        const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'];
+        const emailDomain = user.email.split('@')[1];
+        if (!allowedDomains.includes(emailDomain)) {
+            return res.status(400).json({ message: 'Email must be from gmail, yahoo, outlook, or hotmail' });
+        }
+
         const deal = await Deal.findById(dealId);
         if (!deal) {
             return res.status(404).json({ message: 'Deal not found' });
@@ -28,9 +40,12 @@ exports.createDealRequest = async (req, res) => {
 
 exports.getDealRequests = async (req, res) => {
     try {
+        const { sortOrder = 'desc' } = req.query;
+        const sortDirection = sortOrder === 'asc' ? 1 : -1;
+
         const requests = await DealRequest.find()
             .populate('dealId', 'title')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: sortDirection });
 
         res.json(requests);
     } catch (error) {

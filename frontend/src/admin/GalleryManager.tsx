@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import DeleteModal from './DeleteModal';
 import {
   createGalleryPhoto,
   deleteGalleryPhoto,
@@ -114,6 +115,12 @@ export default function GalleryManager() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [editing, setEditing] = useState<GalleryItem | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null; title: string }>({
+    open: false,
+    id: null,
+    title: ''
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     title: '',
@@ -127,7 +134,7 @@ export default function GalleryManager() {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    
+
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
       setError('Invalid file type. Please upload JPG, PNG, WEBP, or GIF.');
@@ -140,7 +147,7 @@ export default function GalleryManager() {
       e.target.value = '';
       return;
     }
-    
+
     const preview = URL.createObjectURL(file);
     setForm((p) => ({ ...p, imageFile: file, imagePreview: preview }));
   };
@@ -253,21 +260,29 @@ export default function GalleryManager() {
     }
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Delete this image?')) return;
+  const remove = (item: GalleryItem) => {
+    setDeleteModal({ open: true, id: item.id, title: item.title });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    setIsDeleting(true);
     try {
-      await deleteGalleryPhoto(id);
-      setItems((s) => s.filter((i) => i.id !== id));
+      await deleteGalleryPhoto(deleteModal.id);
+      setItems((s) => s.filter((i) => i.id !== deleteModal.id));
+      setDeleteModal({ open: false, id: null, title: '' });
     } catch (err: any) {
       console.error('Failed to delete photo', err);
       setError('Unable to delete photo.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto">
       {error && <ErrorModal message={error} onClose={() => setError(null)} />}
-      
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -325,7 +340,7 @@ export default function GalleryManager() {
                     <span>Edit</span>
                   </button>
                   <button
-                    onClick={() => remove(i.id)}
+                    onClick={() => remove(i)}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
                   >
                     <TrashIcon />
@@ -341,7 +356,7 @@ export default function GalleryManager() {
       {showModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
           <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <div>
@@ -470,6 +485,16 @@ export default function GalleryManager() {
           </div>
         </div>
       )}
+
+      <DeleteModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, title: '' })}
+        onConfirm={confirmDelete}
+        title="Delete Photo"
+        message="Are you sure you want to delete this photo?"
+        itemTitle={deleteModal.title}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

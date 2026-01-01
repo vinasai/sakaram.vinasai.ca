@@ -56,15 +56,17 @@ export default function DealRequestModal({ deal, onClose }: DealRequestModalProp
         const phoneCfg = phoneFormats[formData.countryCode];
         const phoneLengthOk = phoneCfg ? phoneDigits.length === phoneCfg.max : phoneDigits.length > 0;
 
-        if (!trimmedName || trimmedName.length > 100 || hasLeadingSpace) {
+        if (!trimmedName || trimmedName.length > 100 || hasLeadingSpace || !/^[a-zA-Z\s]+$/.test(trimmedName)) {
             setStatus('error');
-            setErrorMessage('Full name must be 1-100 characters with no leading spaces.');
+            setErrorMessage('Full name must be 1-100 characters, contain only letters, and have no leading spaces.');
             return;
         }
 
-        if (!emailValid) {
+        const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'];
+        const emailDomain = trimmedEmail.split('@')[1];
+        if (!emailValid || !allowedDomains.includes(emailDomain)) {
             setStatus('error');
-            setErrorMessage('Please enter a valid email address.');
+            setErrorMessage('Email must be from gmail, yahoo, outlook, or hotmail.');
             return;
         }
 

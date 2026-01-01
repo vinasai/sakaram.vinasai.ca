@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
+import DeleteModal from './DeleteModal';
 import {
   addTourExclusion,
   addTourInclusion,
@@ -221,6 +222,12 @@ export default function TourManager() {
   const [editing, setEditing] = useState<Tour | null>(null);
   const [editingDetails, setEditingDetails] = useState<TourDetails | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; id: string | null; title: string }>({
+    open: false,
+    id: null,
+    title: ''
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -594,7 +601,7 @@ export default function TourManager() {
 
     if (missingFields.length > 0) {
       setFormError('');
-      setError(`Please provide the following mandatory fields:\n\n• ${missingFields.join('\n• ')}`);
+      setError(`Please provide the following mandatory fields:\n\nâ€¢ ${missingFields.join('\nâ€¢ ')}`);
       return;
     }
 
@@ -695,7 +702,7 @@ export default function TourManager() {
           const field = e2.path || e2.param;
           return field ? `${field.charAt(0).toUpperCase() + field.slice(1)}: ${e2.msg}` : e2.msg;
         });
-        friendly = `Backend Validation Failed:\n\n• ${formattedErrors.join('\n• ')}`;
+        friendly = `Backend Validation Failed:\n\nâ€¢ ${formattedErrors.join('\nâ€¢ ')}`;
       } else if (apiMessage) {
         friendly = apiMessage;
       }
@@ -819,7 +826,7 @@ export default function TourManager() {
 
     if (missingFields.length > 0) {
       setFormError('');
-      setError(`Please provide the following mandatory fields:\n\n• ${missingFields.join('\n• ')}`);
+      setError(`Please provide the following mandatory fields:\n\nâ€¢ ${missingFields.join('\nâ€¢ ')}`);
       return;
     }
 
@@ -926,7 +933,7 @@ export default function TourManager() {
           const field = e2.path || e2.param;
           return field ? `${field.charAt(0).toUpperCase() + field.slice(1)}: ${e2.msg}` : e2.msg;
         });
-        friendly = `Backend Validation Failed:\n\n• ${formattedErrors.join('\n• ')}`;
+        friendly = `Backend Validation Failed:\n\nâ€¢ ${formattedErrors.join('\nâ€¢ ')}`;
       } else if (apiMessage) {
         friendly = apiMessage;
       }
@@ -976,21 +983,29 @@ export default function TourManager() {
     setDurationRangeEnd('');
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Delete this tour?')) return;
+  const remove = (tour: Tour) => {
+    setDeleteModal({ open: true, id: tour.id, title: tour.name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return;
+    setIsDeleting(true);
     try {
-      await deleteTour(id);
-      setItems((s) => s.filter((i) => i.id !== id));
-    } catch (err) {
+      await deleteTour(deleteModal.id);
+      setItems((s) => s.filter(i => i.id !== deleteModal.id));
+      setDeleteModal({ open: false, id: null, title: '' });
+    } catch (err: any) {
       console.error('Failed to delete tour', err);
-      setFormError('Unable to delete tour.');
+      setError('Unable to delete tour.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto">
       {error && <ErrorModal message={error} onClose={() => setError(null)} />}
-      
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
@@ -1089,7 +1104,7 @@ export default function TourManager() {
                       <EditIcon />
                     </button>
                     <button
-                      onClick={() => remove(i.id)}
+                      onClick={() => remove(i)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete"
                       type="button"
@@ -1108,7 +1123,7 @@ export default function TourManager() {
       {showModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
           <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <div>
@@ -1131,7 +1146,7 @@ export default function TourManager() {
               <form onSubmit={editing ? saveEdit : handleAdd} className="p-8 space-y-8">
                 {/* Basic Information */}
                 <div className="space-y-6">
-                  
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -1196,7 +1211,7 @@ export default function TourManager() {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Duration <span className="text-red-500">*</span>
                       </label>
-                      
+
                       {/* Duration Type Selector */}
                       <div className="mb-3">
                         <select
@@ -1259,7 +1274,7 @@ export default function TourManager() {
                           />
                         </div>
                       )}
-                      
+
                       <p className="mt-2 text-xs text-gray-500">
                         {durationType === 'hours' && 'Single hours only (e.g., 4 hours)'}
                         {durationType === 'days' && 'Single days only (e.g., 2 days)'}
@@ -1350,7 +1365,7 @@ export default function TourManager() {
                 {/* Photos */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-3 border-b-2 border-purple-100">
-                   
+
                     <div>
                       <h4 className="font-semibold text-gray-900 text-lg">
                         Tour Photos <span className="text-red-500">*</span>
@@ -1612,7 +1627,7 @@ export default function TourManager() {
                 {/* Itinerary */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 pb-3 border-b-2 border-indigo-100">
-                    
+
                     <div>
                       <h4 className="font-semibold text-gray-900 text-lg">Tour Itinerary</h4>
                       <p className="text-xs text-gray-500">Plan activities for each day</p>
@@ -1640,7 +1655,7 @@ export default function TourManager() {
                                 }`}
                             >
                               {dayName}
-                              {hasActivities && !isSelected && <span className="ml-1 text-xs">✓</span>}
+                              {hasActivities && !isSelected && <span className="ml-1 text-xs">âœ“</span>}
                             </button>
                           );
                         })}
@@ -1740,37 +1755,46 @@ export default function TourManager() {
               </form>
 
               {/* Modal Footer - submit button (FIXED) */}
-            <div className="flex items-center justify-end gap-3 pr-8 pt-2 pb-5 ">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
-              >
-                Cancel
-              </button>
+              <div className="flex items-center justify-end gap-3 pr-8 pt-2 pb-5 ">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none transition-colors"
+                >
+                  Cancel
+                </button>
 
-              {/* Submit triggers form onSubmit */}
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="px-8 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none shadow-md shadow-blue-200 transition-all disabled:opacity-70 disabled:shadow-none"
-                onClick={() => {
-                  if (isSaving) return;
-                  const formEl = document.querySelector('form');
-                  if (formEl) (formEl as HTMLFormElement).requestSubmit?.();
-                }}
-              >
-                
-                {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Tour'}
-              </button>
-            </div>
+                {/* Submit triggers form onSubmit */}
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-8 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none shadow-md shadow-blue-200 transition-all disabled:opacity-70 disabled:shadow-none"
+                  onClick={() => {
+                    if (isSaving) return;
+                    const formEl = document.querySelector('form');
+                    if (formEl) (formEl as HTMLFormElement).requestSubmit?.();
+                  }}
+                >
+
+                  {isSaving ? 'Saving...' : editing ? 'Save Changes' : 'Create Tour'}
+                </button>
+              </div>
             </div>
 
-            
+
           </div>
         </div>
       )}
 
+      <DeleteModal
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, id: null, title: '' })}
+        onConfirm={confirmDelete}
+        title="Delete Tour"
+        message="Are you sure you want to delete this tour? This action cannot be undone."
+        itemTitle={deleteModal.title}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
