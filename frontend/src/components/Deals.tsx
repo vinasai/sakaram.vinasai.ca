@@ -56,7 +56,7 @@ export default function Deals() {
             id: deal._id,
             title: deal.title,
             subtitle: deal.tagline || '', // Map tagline to subtitle as per design intent
-            originalPrice: deal.price ? `$${deal.price}` : '',
+            originalPrice: (deal.price && discountPercent !== '0%') ? `$${deal.price}` : '',
             discountedPrice: `$${discountedPrice}`,
             discount: discountPercent,
             image: toMediaUrl(deal.imageUrl),
