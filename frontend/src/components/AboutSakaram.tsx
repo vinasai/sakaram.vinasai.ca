@@ -21,7 +21,7 @@ export default function AboutSakaram() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src="https://images.pexels.com/photos/4666748/pexels-photo-4666748.jpeg?auto=compress&cs=tinysrgb&w=1920"
+            src="https://images.unsplash.com/photo-1711797750174-c3750dd9d7c9?q=80&w=735"
             alt="Sri Lanka tea plantation background"
             className="w-full h-full object-cover"
           />
