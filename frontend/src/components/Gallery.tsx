@@ -17,7 +17,7 @@ export default function Gallery() {
 
     const loadGallery = async () => {
       try {
-        const res = await fetchGallery();
+        const res = await fetchGallery({ limit: 1000 });
         const normalized = (res.items || [])
           .map((s: any) => ({
             url: toMediaUrl(s.imageUrl),

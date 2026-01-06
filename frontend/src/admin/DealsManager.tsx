@@ -549,7 +549,21 @@ export default function DealsManager() {
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-gray-900 flex-1">{i.title}</h3>
                   {i.price && (
-                    <span className="text-green-600 font-semibold ml-2">{i.price}</span>
+                    <div className="flex flex-col items-end ml-2">
+                      {i.discount && Number(i.discount) > 0 ? (
+                        <>
+                          <span className="text-xs text-gray-400 line-through">${i.price}</span>
+                          <span className="text-green-600 font-bold">
+                            ${Math.round(Number(i.price) * (1 - Number(i.discount) / 100))}
+                          </span>
+                          <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-bold mt-0.5">
+                            {i.discount}% OFF
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-green-600 font-semibold">${i.price}</span>
+                      )}
+                    </div>
                   )}
                 </div>
                 {i.tagline && <p className="text-xs text-blue-600 font-medium mb-1">{i.tagline}</p>}

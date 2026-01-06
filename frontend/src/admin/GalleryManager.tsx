@@ -155,7 +155,7 @@ export default function GalleryManager() {
   const loadGallery = async () => {
     setLoading(true);
     try {
-      const res = await fetchGallery();
+      const res = await fetchGallery({ limit: 1000 });
       const mapped = (res.items || []).map((item: any) => ({
         id: item._id,
         title: item.title,
