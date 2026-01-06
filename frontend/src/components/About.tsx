@@ -92,7 +92,7 @@ export default function About() {
               {/* Main Image */}
               <div className="relative overflow-hidden rounded-2xl shadow-2xl">
                 <img
-                  src="https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                  src="https://images.unsplash.com/photo-1580910531902-1112518b26ea?q=80&w=735"
                   alt="Sri Lankan landscape"
                   className="w-full h-[500px] object-cover transform group-hover:scale-110 transition-transform duration-700"
                 />
