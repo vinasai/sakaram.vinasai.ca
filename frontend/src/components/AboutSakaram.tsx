@@ -21,7 +21,7 @@ export default function AboutSakaram() {
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1711797750174-c3750dd9d7c9?q=80&w=735"
+            src="https://images.pexels.com/photos/4666748/pexels-photo-4666748.jpeg?auto=compress&cs=tinysrgb&w=1920"
             alt="Sri Lanka tea plantation background"
             className="w-full h-full object-cover"
           />
@@ -35,7 +35,7 @@ export default function AboutSakaram() {
             <div className="relative">
               <div className="relative overflow-hidden rounded-3xl shadow-2xl">
                 <img
-                  src="https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=1200"
+                  src="https://images.unsplash.com/photo-1711797750174-c3750dd9d7c9?q=80&w=735"
                   alt="Sri Lankan Leopard in natural habitat"
                   className="w-full h-[600px] lg:h-[700px] object-cover"
                 />
