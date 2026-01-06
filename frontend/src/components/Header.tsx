@@ -182,7 +182,10 @@ export default function Header() {
             {/* Right Section - CTA */}
             <div className="hidden lg:flex items-center gap-4">
               <button
-                onClick={() => scrollToSection('contact')}
+                onClick={() => {
+                  const message = encodeURIComponent('Hello Sakaram Tours, I would like to book a travel package. Could you please let me know what packages are available?');
+                  window.open(`https://wa.me/94760465855?text=${message}`, '_blank');
+                }}
                 className="group flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-full hover:shadow-lg hover:shadow-emerald-200 transition-all"
               >
                 Book Now
@@ -267,7 +270,10 @@ export default function Header() {
 
             {/* Book Now Button */}
             <button
-              onClick={() => scrollToSection('contact')}
+              onClick={() => {
+                const message = encodeURIComponent('Hello Sakaram Tours, I would like to book a travel package. Could you please let me know what packages are available?');
+                window.open(`https://wa.me/94760465855?text=${message}`, '_blank');
+              }}
               className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
             >
               Book Your Adventure

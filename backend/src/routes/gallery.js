@@ -16,7 +16,15 @@ router.get("/", async (req, res) => {
     filter.title = new RegExp(req.query.search, "i");
   }
 
-  const { skip, limit, sort, page } = getPagination(req.query);
+  // Custom pagination for Gallery to allow large limits (up to 1000)
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 1000, 1), 1000); // Default to 1000
+  const skip = (page - 1) * limit;
+
+  const sortBy = req.query.sortBy || "createdAt";
+  const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+  const sort = { [sortBy]: sortOrder };
+
   const [items, total] = await Promise.all([
     GalleryPhoto.find(filter).sort(sort).skip(skip).limit(limit),
     GalleryPhoto.countDocuments(filter),
