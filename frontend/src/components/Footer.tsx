@@ -1,7 +1,15 @@
-import { Facebook, Instagram, Twitter, Mail, Phone, ArrowRight, Youtube } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import sakaramLogo from '../pics/sarkam.png';
-import { fetchTours } from '../api/client';
+import {
+  Facebook,
+  Instagram,
+  Twitter,
+  Mail,
+  Phone,
+  ArrowRight,
+  Youtube,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import sakaramLogo from "../pics/sarkam.png";
+import { fetchTours } from "../api/client";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -21,7 +29,7 @@ export default function Footer() {
         // Taking first 6 tours.
         setPopularTours(tours.slice(0, 6));
       } catch (error) {
-        console.error('Failed to load footer tours', error);
+        console.error("Failed to load footer tours", error);
       }
     };
     loadPopularTours();
@@ -29,29 +37,35 @@ export default function Footer() {
 
   const scrollToSection = (id: string) => {
     // If the target is contact, navigate to /contact (or scroll if already there)
-    if (id === 'contact') {
-      if (typeof window !== 'undefined' && window.location.pathname === '/contact') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else if (typeof window !== 'undefined') {
-        window.location.href = '/contact';
+    if (id === "contact") {
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname === "/contact"
+      ) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (typeof window !== "undefined") {
+        window.location.href = "/contact";
       }
       return;
     }
 
-    if (id === 'about') {
-      if (typeof window !== 'undefined' && window.location.pathname === '/about') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else if (typeof window !== 'undefined') {
-        window.location.href = '/about';
+    if (id === "about") {
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname === "/about"
+      ) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (typeof window !== "undefined") {
+        window.location.href = "/about";
       }
       return;
     }
 
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    } else if (id === 'home' && window.location.pathname !== '/') {
-      window.location.href = '/';
+      element.scrollIntoView({ behavior: "smooth" });
+    } else if (id === "home" && window.location.pathname !== "/") {
+      window.location.href = "/";
     }
   };
 
@@ -74,7 +88,8 @@ export default function Footer() {
               />
             </div>
             <p className="text-gray-400 mb-6 leading-relaxed">
-              Your trusted partner for unforgettable Sri Lankan adventures. Discover the magic of the Pearl of the Indian Ocean with us.
+              Your trusted partner for unforgettable Sri Lankan adventures.
+              Discover the magic of the Pearl of the Indian Ocean with us.
             </p>
 
             {/* Social Media */}
@@ -85,7 +100,10 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="group bg-gray-800 hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-600 p-3 rounded-full transition-all duration-300 hover:scale-110"
               >
-                <Facebook size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                <Facebook
+                  size={18}
+                  className="text-gray-400 group-hover:text-white transition-colors"
+                />
               </a>
               <a
                 href="https://www.instagram.com/sakaramtours/"
@@ -93,7 +111,10 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="group bg-gray-800 hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-600 p-3 rounded-full transition-all duration-300 hover:scale-110"
               >
-                <Instagram size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                <Instagram
+                  size={18}
+                  className="text-gray-400 group-hover:text-white transition-colors"
+                />
               </a>
               <a
                 href="https://www.youtube.com/@SakaramTours"
@@ -101,13 +122,19 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="group bg-gray-800 hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-600 p-3 rounded-full transition-all duration-300 hover:scale-110"
               >
-                <Youtube size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                <Youtube
+                  size={18}
+                  className="text-gray-400 group-hover:text-white transition-colors"
+                />
               </a>
               <a
                 href="mailto:sakaramtours@gmail.com"
                 className="group bg-gray-800 hover:bg-gradient-to-br hover:from-emerald-500 hover:to-teal-600 p-3 rounded-full transition-all duration-300 hover:scale-110"
               >
-                <Mail size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                <Mail
+                  size={18}
+                  className="text-gray-400 group-hover:text-white transition-colors"
+                />
               </a>
             </div>
           </div>
@@ -119,13 +146,16 @@ export default function Footer() {
               Quick Links
             </h4>
             <ul className="space-y-3">
-              {['home', 'about', 'contact'].map((link) => (
+              {["home", "about", "contact"].map((link) => (
                 <li key={link}>
                   <button
                     onClick={() => scrollToSection(link)}
                     className="group flex items-center text-gray-400 hover:text-emerald-400 transition-colors"
                   >
-                    <ArrowRight size={16} className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all" />
+                    <ArrowRight
+                      size={16}
+                      className="mr-2 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all"
+                    />
                     <span className="capitalize">{link}</span>
                   </button>
                 </li>
@@ -142,13 +172,25 @@ export default function Footer() {
             <ul className="space-y-3">
               {popularTours.length > 0 ? (
                 popularTours.map((tour, index) => (
-                  <li key={tour._id || index} className="group flex items-start text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer">
-                    <span className="text-emerald-500 mr-2 text-xs mt-1">▸</span>
-                    <a href={`/trip/${tour._id}`} className="text-sm hover:underline">{tour.name}</a>
+                  <li
+                    key={tour._id || index}
+                    className="group flex items-start text-gray-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                  >
+                    <span className="text-emerald-500 mr-2 text-xs mt-1">
+                      ▸
+                    </span>
+                    <a
+                      href={`/trip/${tour._id}`}
+                      className="text-sm hover:underline"
+                    >
+                      {tour.name}
+                    </a>
                   </li>
                 ))
               ) : (
-                <li className="text-gray-500 text-sm italic">Loading tours...</li>
+                <li className="text-gray-500 text-sm italic">
+                  Loading tours...
+                </li>
               )}
             </ul>
           </div>
@@ -161,17 +203,29 @@ export default function Footer() {
             </h4>
             <ul className="space-y-4">
               <li className="flex items-center group">
-                <Phone size={18} className="text-emerald-500 mr-3 flex-shrink-0" />
+                <Phone
+                  size={18}
+                  className="text-emerald-500 mr-3 flex-shrink-0"
+                />
                 <div className="text-gray-400 text-sm">
-                  <a href="tel:+94760465855" className="hover:text-emerald-400 transition-colors">
+                  <a
+                    href="tel:+94760465855"
+                    className="hover:text-emerald-400 transition-colors"
+                  >
                     +94 76 046 5855
                   </a>
                 </div>
               </li>
               <li className="flex items-center group">
-                <Mail size={18} className="text-emerald-500 mr-3 flex-shrink-0" />
+                <Mail
+                  size={18}
+                  className="text-emerald-500 mr-3 flex-shrink-0"
+                />
                 <div className="text-gray-400 text-sm">
-                  <a href="mailto:sakaramtours@gmail.com" className="hover:text-emerald-400 transition-colors">
+                  <a
+                    href="mailto:sakaramtours@gmail.com"
+                    className="hover:text-emerald-400 transition-colors"
+                  >
                     sakaramtours@gmail.com
                   </a>
                 </div>
@@ -203,13 +257,24 @@ export default function Footer() {
             </p>
 
             <div className="flex space-x-6 text-sm">
-              <a href="/privacy-policy" className="text-gray-400 hover:text-emerald-400 transition-colors">
+              <a
+                href="/privacy-policy"
+                className="text-gray-400 hover:text-emerald-400 transition-colors"
+              >
                 Privacy Policy
               </a>
-              <a href="/terms-of-service" className="text-gray-400 hover:text-emerald-400 transition-colors">
+              <a
+                href="/terms-of-service"
+                className="text-gray-400 hover:text-emerald-400 transition-colors"
+              >
                 Terms of Service
               </a>
             </div>
+          </div>
+          <div className="mt-4 text-center">
+            <p className="text-gray-500 text-xs">
+              Design & Developed by Srisai Pvt Ltd
+            </p>
           </div>
         </div>
       </div>
