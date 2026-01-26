@@ -271,11 +271,20 @@ export default function Footer() {
               </a>
             </div>
           </div>
-          <div className="mt-4 text-center">
-            <p className="text-gray-500 text-xs">
-              Design & Developed by Srisai Pvt Ltd
-            </p>
-          </div>
+         <div className="mt-4 text-center">
+          <p className="text-gray-500 text-xs">
+            Design &amp; Developed by{" "}
+            <a
+              href="https://srisai.lk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-gray-900 underline underline-offset-2"
+            >
+      Srisai Pvt Ltd
+    </a>
+  </p>
+</div>
+
         </div>
       </div>
     </footer>
