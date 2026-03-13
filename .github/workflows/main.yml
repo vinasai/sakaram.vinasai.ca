@@ -15,7 +15,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       - name: Deploy to Server
         run: |
           set -e
@@ -23,7 +23,7 @@ jobs:
           FRONTEND_ENV_B64="$(printf '%s' "${{ vars.FRONTEND_ENV }}" | base64 -w0)"
           BACKEND_ENV_B64="$(printf '%s' "${{ vars.BACKEND_ENV }}" | base64 -w0)"
           
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
           "SERVER_PATH='${{ secrets.WORK_DIR }}' FRONTEND_DIR='${{ secrets.WORK_DIR }}/frontend' BACKEND_DIR='${{ secrets.WORK_DIR }}/backend' FRONTEND_ENV_B64='$FRONTEND_ENV_B64' BACKEND_ENV_B64='$BACKEND_ENV_B64' bash -s" << 'EOF'
             set -e
 
