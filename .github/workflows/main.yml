@@ -1,4 +1,4 @@
-name: sakaram.vinasai.ca deploy 
+name: sakaram.vinasai.ca deploy
 on:
   push:
     branches:
